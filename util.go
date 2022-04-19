@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	. "github.com/chef-go/base"
+	. "github.com/chefsgo/base"
 )
 
 type (

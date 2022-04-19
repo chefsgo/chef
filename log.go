@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/chef-go/base"
+	. "github.com/chefsgo/base"
 )
 
 //待处理 json 格式的输出

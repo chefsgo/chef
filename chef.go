@@ -1,7 +1,7 @@
 package chef
 
 import (
-	. "github.com/chef-go/base"
+	. "github.com/chefsgo/base"
 )
 
 // Register 注册各种内容

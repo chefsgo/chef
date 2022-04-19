@@ -1,4 +1,4 @@
-module github.com/chef-go/chef
+module github.com/chefsgo/chef
 
 go 1.17
 

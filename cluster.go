@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"sync"
 
-	. "github.com/chef-go/base"
+	. "github.com/chefsgo/base"
 )
 
 var (

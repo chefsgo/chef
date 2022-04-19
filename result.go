@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/chef-go/base"
+	. "github.com/chefsgo/base"
 )
 
 type (

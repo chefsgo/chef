@@ -7,7 +7,7 @@ import (
 	"sync"
 	"syscall"
 
-	. "github.com/chef-go/base"
+	. "github.com/chefsgo/base"
 )
 
 var (
