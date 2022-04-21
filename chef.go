@@ -279,6 +279,12 @@ func (k *chef) launch() {
 	k.launched = true
 
 	Debug("启动了")
+	token, err := mToken.Sign(&Token{ActId: "12123"})
+	Debug("token", err, token)
+
+	eee, err := mCodec.EncodeNumber(123)
+	Debug("codec", err, eee)
+
 	// Debug("wf么鬼东西啊")
 	// Debug("wf么鬼东西啊")
 }
@@ -306,9 +312,11 @@ func (k *chef) terminate() {
 
 //将各种模块按顺序注册到核心
 func init() {
-	core.loader("basic", mBasic)
 	core.loader("log", mLog)
+	core.loader("basic", mBasic)
+	core.loader("codec", mCodec)
 	core.loader("mutex", mMutex)
 	core.loader("session", mSession)
 	core.loader("cache", mCache)
+	core.loader("token", mToken)
 }

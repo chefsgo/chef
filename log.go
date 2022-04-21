@@ -24,6 +24,8 @@ var (
 		},
 		drivers: map[string]LogDriver{},
 	}
+
+	errInvalidLogConnection = errors.New("Invalid log connection.")
 )
 
 const (
@@ -100,7 +102,7 @@ type (
 		Close() error
 
 		// Write 写入日志
-		Write(Log) error
+		Write(*Log) error
 
 		// Flush 冲马桶
 		Flush()
@@ -130,7 +132,7 @@ type (
 		waiter sync.WaitGroup
 
 		// logger 日志发送管道
-		logger chan Log
+		logger chan *Log
 
 		// signal 信号管道，用于flush缓存区，或是结束循环
 		// false 表示flush缓存区
@@ -209,7 +211,7 @@ func (module *logModule) Initialize() {
 
 	// 保存连接，设置管道大小
 	module.connect = connect
-	module.logger = make(chan Log, 100)
+	module.logger = make(chan *Log, 100)
 	module.signal = make(chan bool, 1)
 
 	// 如果非同步模式，就开始异步循环
@@ -239,7 +241,7 @@ func (module *logModule) Driver(name string, driver LogDriver, override bool) {
 	defer module.mutex.Unlock()
 
 	if driver == nil {
-		panic("[log]驱动不可为空")
+		panic("Invalid log driver: " + name)
 	}
 
 	if override {
@@ -268,9 +270,9 @@ func (log *Log) Format() string {
 }
 
 // flush 调用连接在write
-func (module *logModule) write(msg Log) error {
+func (module *logModule) write(msg *Log) error {
 	if module.connect == nil {
-		return errors.New("[日志]无效连接")
+		return errInvalidLogConnection
 	}
 
 	//格式传过去
@@ -296,7 +298,7 @@ func (module *logModule) flush() {
 }
 
 // Write 写入日志，对外的，需要处理逻辑
-func (module *logModule) Write(msg Log) error {
+func (module *logModule) Write(msg *Log) error {
 	if module.config.Level < msg.Level {
 		return nil
 	}
@@ -326,7 +328,7 @@ func (module *logModule) Flush() {
 
 // Logging 对外按日志级写日志的方法
 func (module *logModule) Logging(level LogLevel, body string) error {
-	msg := Log{Time: time.Now().UnixNano(), Level: level, Body: body}
+	msg := &Log{Time: time.Now().UnixNano(), Level: level, Body: body}
 	return module.Write(msg)
 }
 
