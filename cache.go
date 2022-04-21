@@ -10,51 +10,54 @@ import (
 )
 
 var (
-	mSession = &sessionModule{
-		configs:   make(map[string]SessionConfig, 0),
-		drivers:   make(map[string]SessionDriver, 0),
-		instances: make(map[string]sessionInstance, 0),
+	mCache = &cacheModule{
+		configs:   make(map[string]CacheConfig, 0),
+		drivers:   make(map[string]CacheDriver, 0),
+		instances: make(map[string]cacheInstance, 0),
 	}
 
-	errInvalidSessionConnection = errors.New("Invalid session connection.")
+	errInvalidCacheConnection = errors.New("Invalid cache connection.")
 )
 
 type (
-	SessionConfig struct {
+	CacheConfig struct {
 		Driver  string
 		Weight  int
 		Prefix  string
 		Expiry  time.Duration
 		Setting Map
 	}
-	// SessionDriver 数据驱动
-	SessionDriver interface {
-		Connect(name string, config SessionConfig) (SessionConnect, error)
+	// CacheDriver 数据驱动
+	CacheDriver interface {
+		Connect(name string, config CacheConfig) (CacheConnect, error)
 	}
 
-	// SessionConnect 会话连接
-	SessionConnect interface {
+	// CacheConnect 缓存连接
+	CacheConnect interface {
 		Open() error
 		Close() error
 
-		Read(id string) (Map, error)
-		Write(id string, value Map, expiry time.Duration) error
-		Delete(id string) error
-		Clear(perfix string) error
+		Read(string) (Any, error)
+		Write(key string, val Any, expiry time.Duration) error
+		Exists(key string) (bool, error)
+		Delete(key string) error
+		Serial(key string, start, step int64) (int64, error)
+		Keys(prefix string) ([]string, error)
+		Clear(prefix string) error
 	}
 
-	// sessionInstance 会话实例
-	sessionInstance struct {
-		config  SessionConfig
-		connect SessionConnect
+	// cacheInstance 缓存实例
+	cacheInstance struct {
+		config  CacheConfig
+		connect CacheConnect
 	}
 
-	sessionModule struct {
+	cacheModule struct {
 		mutex   sync.Mutex
-		configs map[string]SessionConfig
-		drivers map[string]SessionDriver
+		configs map[string]CacheConfig
+		drivers map[string]CacheDriver
 
-		instances map[string]sessionInstance
+		instances map[string]cacheInstance
 
 		weights  map[string]int
 		hashring *util.HashRing
@@ -62,16 +65,16 @@ type (
 )
 
 // register 模块注册中心
-func (module *sessionModule) Register(name string, value Any, override bool) {
+func (module *cacheModule) Register(name string, value Any, override bool) {
 	switch config := value.(type) {
-	case SessionDriver:
+	case CacheDriver:
 		module.Driver(name, config, override)
 	}
 }
 
 // 处理单个配置
-func (module *sessionModule) configure(name string, config Map) {
-	cfg := SessionConfig{
+func (module *cacheModule) configure(name string, config Map) {
+	cfg := CacheConfig{
 		Driver: DEFAULT, Weight: 1, Expiry: time.Hour * 24,
 	}
 	//如果已经存在了，用现成的改写
@@ -108,7 +111,7 @@ func (module *sessionModule) configure(name string, config Map) {
 		cfg.Expiry = time.Second * time.Duration(expiry)
 	}
 
-	// session 全部参与分布
+	// cache 全部参与分布
 	if cfg.Weight <= 0 {
 		cfg.Weight = 1
 	}
@@ -117,9 +120,9 @@ func (module *sessionModule) configure(name string, config Map) {
 	module.configs[name] = cfg
 }
 
-func (module *sessionModule) Configure(config Map) {
+func (module *cacheModule) Configure(config Map) {
 	var confs Map
-	if vvv, ok := config["session"].(Map); ok {
+	if vvv, ok := config["cache"].(Map); ok {
 		confs = vvv
 	}
 
@@ -142,12 +145,12 @@ func (module *sessionModule) Configure(config Map) {
 }
 
 // Driver 注册驱动
-func (module *sessionModule) Driver(name string, driver SessionDriver, overrides ...bool) {
+func (module *cacheModule) Driver(name string, driver CacheDriver, overrides ...bool) {
 	module.mutex.Lock()
 	defer module.mutex.Unlock()
 
 	if driver == nil {
-		panic("Invalid session driver: " + name)
+		panic("Invalid cache driver: " + name)
 	}
 
 	override := true
@@ -165,10 +168,11 @@ func (module *sessionModule) Driver(name string, driver SessionDriver, overrides
 }
 
 // initialize 初始化
-func (module *sessionModule) Initialize() {
+func (module *cacheModule) Initialize() {
+
 	// 如果没有配置任何连接时，默认一个
 	if len(module.configs) == 0 {
-		module.configs[DEFAULT] = SessionConfig{
+		module.configs[DEFAULT] = CacheConfig{
 			Driver: DEFAULT, Weight: 1, Expiry: time.Hour * 24,
 		}
 	}
@@ -179,23 +183,23 @@ func (module *sessionModule) Initialize() {
 	for name, config := range module.configs {
 		driver, ok := module.drivers[config.Driver]
 		if ok == false {
-			panic("Invalid session driver: " + config.Driver)
+			panic("Invalid cache driver: " + config.Driver)
 		}
 
 		// 建立连接
 		connect, err := driver.Connect(name, config)
 		if err != nil {
-			panic("Failed to connect to session: " + err.Error())
+			panic("Failed to connect to cache: " + err.Error())
 		}
 
 		// 打开连接
 		err = connect.Open()
 		if err != nil {
-			panic("Failed to open session connect: " + err.Error())
+			panic("Failed to open cache connect: " + err.Error())
 		}
 
 		//保存连接
-		module.instances[name] = sessionInstance{
+		module.instances[name] = cacheInstance{
 			config, connect,
 		}
 
@@ -210,19 +214,19 @@ func (module *sessionModule) Initialize() {
 	module.hashring = util.NewHashRing(weights)
 }
 
-// launch session模块launch暂时没有用
-func (module *sessionModule) Launch() {
-	// fmt.Println("session launched")
+// launch cache模块launch暂时没有用
+func (module *cacheModule) Launch() {
+	// fmt.Println("cache launched")
 }
 
 // terminate 结束模块
-func (module *sessionModule) Terminate() {
+func (module *cacheModule) Terminate() {
 	for _, ins := range module.instances {
 		ins.connect.Close()
 	}
 }
 
-func (module *sessionModule) Read(id string) (Map, error) {
+func (module *cacheModule) Read(id string) (Any, error) {
 	locate := module.hashring.Locate(id)
 
 	if inst, ok := module.instances[locate]; ok {
@@ -230,12 +234,23 @@ func (module *sessionModule) Read(id string) (Map, error) {
 		return inst.connect.Read(key)
 	}
 
-	return nil, errInvalidSessionConnection
-
+	return nil, errInvalidCacheConnection
 }
 
-func (module *sessionModule) Write(id string, value Map, expiries ...time.Duration) error {
+func (module *cacheModule) Exists(id string) (bool, error) {
 	locate := module.hashring.Locate(id)
+
+	if inst, ok := module.instances[locate]; ok {
+		key := inst.config.Prefix + id //加前缀
+		return inst.connect.Exists(key)
+	}
+
+	return false, errInvalidCacheConnection
+}
+
+// Write 写缓存
+func (module *cacheModule) Write(key string, val Map, expiries ...time.Duration) error {
+	locate := module.hashring.Locate(key)
 
 	if inst, ok := module.instances[locate]; ok {
 		expiry := inst.config.Expiry
@@ -244,29 +259,59 @@ func (module *sessionModule) Write(id string, value Map, expiries ...time.Durati
 		}
 
 		//KEY加上前缀
-		key := inst.config.Prefix + id
+		key := inst.config.Prefix + key
 
-		return inst.connect.Write(key, value, expiry)
+		return inst.connect.Write(key, val, expiry)
 	}
 
-	return errInvalidSessionConnection
+	return errInvalidCacheConnection
 }
 
-func (module *sessionModule) Delete(id string) error {
-	locate := module.hashring.Locate(id)
+// Delete 删除缓存
+func (module *cacheModule) Delete(key string) error {
+	locate := module.hashring.Locate(key)
 
 	if inst, ok := module.instances[locate]; ok {
-		key := inst.config.Prefix + id
+		key := inst.config.Prefix + key
 		return inst.connect.Delete(key)
 	}
 
-	return errInvalidSessionConnection
+	return errInvalidCacheConnection
 }
 
-func (module *sessionModule) Clear() error {
-	for _, inst := range module.instances {
-		inst.connect.Clear(inst.config.Prefix)
+// Serial 生成序列编号
+func (module *cacheModule) Serial(key string, start, step int64) (int64, error) {
+	locate := module.hashring.Locate(key)
+
+	if inst, ok := module.instances[locate]; ok {
+		key := inst.config.Prefix + key
+		return inst.connect.Serial(key, start, step)
 	}
 
-	return errInvalidSessionConnection
+	return -1, errInvalidCacheConnection
+}
+
+// Keys 获取所有前缀的KEYS
+func (module *cacheModule) Keys(prefix string) ([]string, error) {
+	keys := make([]string, 0)
+
+	for _, inst := range module.instances {
+		prefix := inst.config.Prefix + prefix
+		temps, err := inst.connect.Keys(prefix)
+		if err == nil {
+			keys = append(keys, temps...)
+		}
+	}
+
+	return keys, nil
+}
+
+// Clear 按前缀清理缓存
+func (module *cacheModule) Clear(prefix string) error {
+	for _, inst := range module.instances {
+		prefix := inst.config.Prefix + prefix
+		inst.connect.Clear(prefix)
+	}
+
+	return errInvalidCacheConnection
 }

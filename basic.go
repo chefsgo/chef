@@ -70,11 +70,11 @@ type (
 	}
 )
 
-func (module *basicModule) configure(config Map) {
+func (module *basicModule) Configure(config Map) {
 	// fmt.Println("basic configured")
 }
 
-func (module *basicModule) register(name string, value Any, override bool) {
+func (module *basicModule) Register(name string, value Any, override bool) {
 	switch val := value.(type) {
 	case Lang:
 		module.Lang(name, val, override)
@@ -93,15 +93,15 @@ func (module *basicModule) register(name string, value Any, override bool) {
 	// fmt.Println("basic registered", name)
 }
 
-func (module *basicModule) initialize() {
+func (module *basicModule) Initialize() {
 	// fmt.Println("basic initialized")
 }
 
-func (module *basicModule) launch() {
+func (module *basicModule) Launch() {
 	// fmt.Println("basic launched")
 }
 
-func (module *basicModule) terminate() {
+func (module *basicModule) Terminate() {
 	// fmt.Println("basic terminated")
 }
 

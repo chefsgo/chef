@@ -140,7 +140,7 @@ type (
 )
 
 // configure 为log模块加载配置
-func (module *logModule) configure(data Map) {
+func (module *logModule) Configure(data Map) {
 	if log, ok := data["log"].(Map); ok {
 		//设置驱动
 		if driver, ok := log["driver"].(string); ok {
@@ -180,7 +180,7 @@ func (module *logModule) configure(data Map) {
 }
 
 // register 为log模块注册内容
-func (module *logModule) register(key string, val Any, override bool) {
+func (module *logModule) Register(key string, val Any, override bool) {
 	switch obj := val.(type) {
 	case LogDriver:
 		module.Driver(key, obj, override)
@@ -189,7 +189,7 @@ func (module *logModule) register(key string, val Any, override bool) {
 }
 
 // initialize 初始化日志模块
-func (module *logModule) initialize() {
+func (module *logModule) Initialize() {
 	driver, ok := module.drivers[module.config.Driver]
 	if ok == false {
 		panic("Invalid log driver: " + module.config.Driver)
@@ -221,12 +221,12 @@ func (module *logModule) initialize() {
 }
 
 // launch 日志模块launch暂时没有用
-func (module *logModule) launch() {
+func (module *logModule) Launch() {
 	// fmt.Println("log launched")
 }
 
 // terminate 关闭日志模块
-func (module *logModule) terminate() {
+func (module *logModule) Terminate() {
 	if module.connect != nil {
 		module.Flush()
 		module.connect.Close()

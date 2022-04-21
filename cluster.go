@@ -91,7 +91,7 @@ type (
 )
 
 // configure 配置集群
-func (module *clusterModule) configure(config Map) {
+func (module *clusterModule) Configure(config Map) {
 	var cluster = config
 	if vv, ok := cluster["cluster"].(Map); ok {
 		cluster = vv
@@ -164,7 +164,7 @@ func (module *clusterModule) configure(config Map) {
 }
 
 // register 模块注册中心
-func (module *clusterModule) register(key string, value Any, override bool) {
+func (module *clusterModule) Register(key string, value Any, override bool) {
 	switch val := value.(type) {
 	case ClusterDriver:
 		module.Driver(key, val, override)
@@ -172,7 +172,7 @@ func (module *clusterModule) register(key string, value Any, override bool) {
 }
 
 // initialize 初始化集群模块
-func (module *clusterModule) initialize() {
+func (module *clusterModule) Initialize() {
 	driver, ok := module.drivers[module.config.Driver]
 	if ok == false {
 		panic("Invalid cluster driver: " + module.config.Driver)
@@ -196,12 +196,12 @@ func (module *clusterModule) initialize() {
 }
 
 // launch 集群模块launch暂时没有用
-func (module *clusterModule) launch() {
+func (module *clusterModule) Launch() {
 	// fmt.Println("cluster launched")
 }
 
 // terminate 关闭集群模块
-func (module *clusterModule) terminate() {
+func (module *clusterModule) Terminate() {
 	if module.connect != nil {
 		module.connect.Close()
 	}

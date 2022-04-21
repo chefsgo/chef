@@ -11,7 +11,7 @@ import (
 
 var (
 	mMutex = &mutexModule{
-		config:    make(map[string]MutexConfig, 0),
+		configs:   make(map[string]MutexConfig, 0),
 		drivers:   make(map[string]MutexDriver, 0),
 		instances: make(map[string]mutexInstance, 0),
 	}
@@ -48,8 +48,8 @@ type (
 	}
 
 	mutexModule struct {
-		mutex  sync.Mutex
-		config map[string]MutexConfig
+		mutex   sync.Mutex
+		configs map[string]MutexConfig
 
 		drivers   map[string]MutexDriver
 		instances map[string]mutexInstance
@@ -60,59 +60,83 @@ type (
 )
 
 // register 模块注册中心
-func (module *mutexModule) register(name string, value Any, override bool) {
+func (module *mutexModule) Register(name string, value Any, override bool) {
 	switch config := value.(type) {
 	case MutexDriver:
 		module.Driver(name, config, override)
 	}
 }
 
-// configure 配置
-func (module *mutexModule) configure(config Map) {
+// 处理单个配置
+func (module *mutexModule) configure(name string, config Map) {
+	cfg := MutexConfig{
+		Driver: DEFAULT, Weight: 1, Expiry: time.Hour * 24,
+	}
+	//如果已经存在了，用现成的改写
+	if vv, ok := module.configs[name]; ok {
+		cfg = vv
+	}
+
+	if driver, ok := config["driver"].(string); ok {
+		cfg.Driver = driver
+	}
+
+	//分配权重
+	if weight, ok := config["weight"].(int); ok {
+		cfg.Weight = weight
+	}
+	if weight, ok := config["weight"].(int64); ok {
+		cfg.Weight = int(weight)
+	}
+	if weight, ok := config["weight"].(float64); ok {
+		cfg.Weight = int(weight)
+	}
+
+	//默认过期时间，单位秒
+	if expiry, ok := config["expiry"].(string); ok {
+		dur, err := util.ParseDuration(expiry)
+		if err == nil {
+			cfg.Expiry = dur
+		}
+	}
+	if expiry, ok := config["expiry"].(int); ok {
+		cfg.Expiry = time.Second * time.Duration(expiry)
+	}
+	if expiry, ok := config["expiry"].(float64); ok {
+		cfg.Expiry = time.Second * time.Duration(expiry)
+	}
+
+	// mutex 全部参与分布
+	if cfg.Weight <= 0 {
+		cfg.Weight = 1
+	}
+
+	//保存配置
+	module.configs[name] = cfg
+}
+
+// configure 接收外部的配置
+func (module *mutexModule) Configure(config Map) {
 	var confs Map
 	if vvv, ok := config["mutex"].(Map); ok {
 		confs = vvv
 	}
 
+	//记录上一层的配置，如果有的话
+	defConfig := Map{}
+
 	for key, val := range confs {
 		if conf, ok := val.(Map); ok {
-
-			cfg := MutexConfig{
-				Driver: DEFAULT, Weight: 1, Expiry: time.Second,
-			}
-
-			if driver, ok := conf["driver"].(string); ok {
-				cfg.Driver = driver
-			}
-
-			//分配权重
-			if weight, ok := conf["weight"].(int); ok {
-				cfg.Weight = weight
-			}
-			if weight, ok := conf["weight"].(int64); ok {
-				cfg.Weight = int(weight)
-			}
-			if weight, ok := conf["weight"].(float64); ok {
-				cfg.Weight = int(weight)
-			}
-
-			//默认过期时间，单位秒
-			if expiry, ok := conf["expiry"].(string); ok {
-				dur, err := util.ParseDuration(expiry)
-				if err == nil {
-					cfg.Expiry = dur
-				}
-			}
-			if expiry, ok := conf["expiry"].(int); ok {
-				cfg.Expiry = time.Second * time.Duration(expiry)
-			}
-			if expiry, ok := conf["expiry"].(float64); ok {
-				cfg.Expiry = time.Second * time.Duration(expiry)
-			}
-
-			//保存配置
-			module.config[key] = cfg
+			//直接注册，然后删除当前key
+			module.configure(key, conf)
+		} else {
+			//记录上一层的配置，如果有的话
+			defConfig[key] = val
 		}
+	}
+
+	if len(defConfig) > 0 {
+		module.configure(DEFAULT, defConfig)
 	}
 }
 
@@ -140,11 +164,11 @@ func (module *mutexModule) Driver(name string, driver MutexDriver, overrides ...
 }
 
 // initialize 初始化
-func (module *mutexModule) initialize() {
+func (module *mutexModule) Initialize() {
 
 	// 如果没有配置任何连接时，默认一个
-	if len(module.config) == 0 {
-		module.config[DEFAULT] = MutexConfig{
+	if len(module.configs) == 0 {
+		module.configs[DEFAULT] = MutexConfig{
 			Driver: DEFAULT, Weight: 1, Expiry: time.Second,
 		}
 	}
@@ -152,7 +176,7 @@ func (module *mutexModule) initialize() {
 	//记录要参与分布的连接和权重
 	weights := make(map[string]int)
 
-	for name, config := range module.config {
+	for name, config := range module.configs {
 		driver, ok := module.drivers[config.Driver]
 		if ok == false {
 			panic("Invalid mutex driver: " + config.Driver)
@@ -187,12 +211,12 @@ func (module *mutexModule) initialize() {
 }
 
 // launch mutex模块launch暂时没有用
-func (module *mutexModule) launch() {
+func (module *mutexModule) Launch() {
 	// fmt.Println("mutex launched")
 }
 
 // terminate 结束模块
-func (module *mutexModule) terminate() {
+func (module *mutexModule) Terminate() {
 	for _, inst := range module.instances {
 		inst.connect.Close()
 	}
