@@ -5,14 +5,21 @@ import (
 )
 
 // Register 注册各种内容
-func Register(name string, config Any, overrides ...bool) {
-	core.register(name, config, overrides...)
+func Register(cfgs ...Any) {
+	core.register(cfgs...)
 }
 
-// Config 开放修改默认配置
+// Identify 声明当前节点的身份和版本
+// role 当前节点的角色
+// version 编译的版本，建议每次发布时更新版本
+func Identify(role string, versions ...string) {
+	core.identify(role, versions...)
+}
+
+// Configure 开放修改默认配置
 // 比如，在代码中就可以设置一些默认配置
 // 这样就可以最大化的减少配置文件的依赖
-func Config(cfg Map) {
+func Configure(cfg Map) {
 	core.configure(cfg)
 }
 

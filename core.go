@@ -16,10 +16,12 @@ var (
 		initialized: false,
 		launched:    false,
 		config: config{
-			name: CHEF, role: CHEF, version: "1.0.0",
+			name: CHEF, role: CHEF, version: "0.0.0",
 			setting: Map{},
 		},
-		modules: make([]module, 0),
+
+		names:   make([]string, 0),
+		modules: make(map[string]module, 0),
 	}
 )
 
@@ -31,7 +33,8 @@ type (
 
 		mutex   sync.RWMutex
 		config  config
-		modules []module
+		names   []string
+		modules map[string]module
 	}
 	config struct {
 		name    string
@@ -40,14 +43,15 @@ type (
 		setting Map
 	}
 	module interface {
-		configure(Map)
 		register(key string, val Any, override bool)
-		launch()
+		configure(Map)
 		initialize()
+		launch()
 		terminate()
 	}
 )
 
+// setting 获取setting
 func (k *kernel) setting() Map {
 	k.mutex.RLock()
 	defer k.mutex.RUnlock()
@@ -65,28 +69,52 @@ func (k *kernel) setting() Map {
 
 // loader 把模块注册到core
 // 遍历所有已经注册过的模块，避免重复注册
-func (k *kernel) loader(m module) {
-	exists := false
-	for _, mod := range k.modules {
-		if mod == m {
-			exists = true
-			break
-		}
+func (k *kernel) loader(name string, m module) {
+	k.mutex.Lock()
+	defer k.mutex.Unlock()
+
+	_, exists := k.modules[name]
+	if exists == false {
+		k.names = append(k.names, name)
 	}
-	if false == exists {
-		k.modules = append(k.modules, m)
-	}
+	k.modules[name] = m
 }
 
 // register 遍历所有模块调用注册
-func (k *kernel) register(name string, config Any, overrides ...bool) {
+// 动态参数，以支持以下几种可能性
+// 并且此方法兼容configure，为各模块加载默认配置
+// name, config, override 包括name的注册
+// config, override	不包括name的注册，比如  langstring, regular, mimetype等
+// configs
+// func (k *kernel) register(name string, config Any, overrides ...bool) {
+func (k *kernel) register(regs ...Any) {
+	name := ""
+	configs := make([]Any, 0)
 	override := true
-	if len(overrides) > 0 {
-		override = overrides[0]
+
+	for _, reg := range regs {
+		switch vvv := reg.(type) {
+		case string:
+			name = vvv
+		case bool:
+			override = vvv
+		default:
+			configs = append(configs, vvv)
+		}
 	}
-	for _, mod := range k.modules {
-		mod.register(name, config, override)
+
+	for _, cfg := range configs {
+		if mmm, ok := cfg.(Map); ok {
+			// 兼容所有模块的配置注册
+			k.configure(mmm)
+		} else {
+			//实际注册到各模块
+			for _, mod := range k.modules {
+				mod.register(name, cfg, override)
+			}
+		}
 	}
+
 }
 
 // parse 解析启动参数，参数有以下几个来源
@@ -161,6 +189,18 @@ func (k *kernel) parse() {
 	// core.cluster.connect()
 }
 
+// identify 声明当前节点的身份和版本
+// role 当前节点的角色/身份
+// version 编译的版本，建议每次发布时更新版本
+// 通常在一个项目中会有多个不同模块（角色），每个模块可能会运行N个节点
+// 在集群中标明当前节点的身份和版本，方便管理集群
+func (k *kernel) identify(role string, versions ...string) {
+	k.config.role = role
+	if len(versions) > 0 {
+		k.config.version = versions[0]
+	}
+}
+
 // configure 为所有模块加载配置
 // 此方法有可能会被多次调用，解析文件后可调用
 // 从配置中心获取到配置后，也会调用
@@ -175,11 +215,19 @@ func (k *kernel) configure(config Map) {
 	}
 
 	//处理core中的配置
-	if name, ok := config["name"].(string); ok {
-		k.config.name = name
+	if name, ok := config["name"].(string); ok && name != k.config.name {
+		if k.config.name == k.config.role {
+			k.config.name = name
+			k.config.role = name
+		} else {
+			k.config.name = name
+		}
 	}
-	if role, ok := config["role"].(string); ok {
+	if role, ok := config["role"].(string); ok && role != k.config.name {
 		k.config.role = role
+	}
+	if version, ok := config["version"].(string); ok && version != k.config.version {
+		k.config.version = version
 	}
 
 	// 配置写到配置中
@@ -200,7 +248,8 @@ func (k *kernel) initialize() {
 	if k.initialized {
 		return
 	}
-	for _, mod := range k.modules {
+	for _, name := range k.names {
+		mod := k.modules[name]
 		mod.initialize()
 	}
 	k.initialized = true
@@ -236,8 +285,9 @@ func (k *kernel) waiting() {
 // terminate 终止结束所有模块
 // 终止顺序需要和初始化顺序相反以保证各模块依赖
 func (k *kernel) terminate() {
-	for i := len(k.modules) - 1; i >= 0; i-- {
-		mod := k.modules[i]
+	for i := len(k.names) - 1; i >= 0; i-- {
+		name := k.names[i]
+		mod := k.modules[name]
 		mod.terminate()
 	}
 	k.launched = false
@@ -245,6 +295,7 @@ func (k *kernel) terminate() {
 
 //将各种模块按顺序注册到核心
 func init() {
-	core.loader(mBasic)
-	core.loader(mLog)
+	core.loader("basic", mBasic)
+	core.loader("log", mLog)
+	core.loader("mutex", mMutex)
 }

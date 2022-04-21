@@ -217,7 +217,7 @@ func (module *logModule) initialize() {
 		go module.eventLoop()
 	}
 
-	fmt.Println("log initialized", module.config.Sync)
+	// fmt.Println("log initialized", module.config.Sync)
 }
 
 // launch 日志模块launch暂时没有用
