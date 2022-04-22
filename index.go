@@ -35,6 +35,7 @@ func Ready() {
 	core.parse()
 	core.cluster()
 	core.initialize()
+	core.connect()
 }
 
 // Go 直接开跑
@@ -42,6 +43,7 @@ func Go() {
 	core.parse()
 	core.cluster()
 	core.initialize()
+	core.connect()
 	core.launch()
 	core.waiting()
 	core.terminate()

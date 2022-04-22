@@ -59,7 +59,12 @@ type (
 	}
 )
 
-// register 模块注册中心
+// Builtin
+func (module *mutexModule) Builtin() {
+
+}
+
+// Register 模块注册中心
 func (module *mutexModule) Register(name string, value Any, override bool) {
 	switch config := value.(type) {
 	case MutexDriver:
@@ -115,7 +120,7 @@ func (module *mutexModule) configure(name string, config Map) {
 	module.configs[name] = cfg
 }
 
-// configure 接收外部的配置
+// Configure 接收外部的配置
 func (module *mutexModule) Configure(config Map) {
 	var confs Map
 	if vvv, ok := config["mutex"].(Map); ok {
@@ -140,30 +145,7 @@ func (module *mutexModule) Configure(config Map) {
 	}
 }
 
-// Driver 注册驱动
-func (module *mutexModule) Driver(name string, driver MutexDriver, overrides ...bool) {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
-
-	if driver == nil {
-		panic("Invalid mutex driver: " + name)
-	}
-
-	override := true
-	if len(overrides) > 0 {
-		override = overrides[0]
-	}
-
-	if override {
-		module.drivers[name] = driver
-	} else {
-		if module.drivers[name] == nil {
-			module.drivers[name] = driver
-		}
-	}
-}
-
-// initialize 初始化
+// Initialize
 func (module *mutexModule) Initialize() {
 
 	// 如果没有配置任何连接时，默认一个
@@ -172,6 +154,11 @@ func (module *mutexModule) Initialize() {
 			Driver: DEFAULT, Weight: 1, Expiry: time.Second,
 		}
 	}
+
+}
+
+// initialize 初始化
+func (module *mutexModule) Connect() {
 
 	//记录要参与分布的连接和权重
 	weights := make(map[string]int)
@@ -210,15 +197,38 @@ func (module *mutexModule) Initialize() {
 	module.hashring = util.NewHashRing(weights)
 }
 
-// launch mutex模块launch暂时没有用
+// Launch
 func (module *mutexModule) Launch() {
 	// fmt.Println("mutex launched")
 }
 
-// terminate 结束模块
+// Terminate 结束模块
 func (module *mutexModule) Terminate() {
 	for _, inst := range module.instances {
 		inst.connect.Close()
+	}
+}
+
+// Driver 注册驱动
+func (module *mutexModule) Driver(name string, driver MutexDriver, overrides ...bool) {
+	module.mutex.Lock()
+	defer module.mutex.Unlock()
+
+	if driver == nil {
+		panic("Invalid mutex driver: " + name)
+	}
+
+	override := true
+	if len(overrides) > 0 {
+		override = overrides[0]
+	}
+
+	if override {
+		module.drivers[name] = driver
+	} else {
+		if module.drivers[name] == nil {
+			module.drivers[name] = driver
+		}
 	}
 }
 

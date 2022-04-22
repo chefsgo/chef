@@ -61,7 +61,12 @@ type (
 	}
 )
 
-// register 模块注册中心
+// Builtin
+func (module *sessionModule) Builtin() {
+
+}
+
+// Register
 func (module *sessionModule) Register(name string, value Any, override bool) {
 	switch config := value.(type) {
 	case SessionDriver:
@@ -117,6 +122,7 @@ func (module *sessionModule) configure(name string, config Map) {
 	module.configs[name] = cfg
 }
 
+// Configure
 func (module *sessionModule) Configure(config Map) {
 	var confs Map
 	if vvv, ok := config["session"].(Map); ok {
@@ -141,30 +147,7 @@ func (module *sessionModule) Configure(config Map) {
 	}
 }
 
-// Driver 注册驱动
-func (module *sessionModule) Driver(name string, driver SessionDriver, overrides ...bool) {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
-
-	if driver == nil {
-		panic("Invalid session driver: " + name)
-	}
-
-	override := true
-	if len(overrides) > 0 {
-		override = overrides[0]
-	}
-
-	if override {
-		module.drivers[name] = driver
-	} else {
-		if module.drivers[name] == nil {
-			module.drivers[name] = driver
-		}
-	}
-}
-
-// initialize 初始化
+// Initialize 初始化
 func (module *sessionModule) Initialize() {
 	// 如果没有配置任何连接时，默认一个
 	if len(module.configs) == 0 {
@@ -210,15 +193,42 @@ func (module *sessionModule) Initialize() {
 	module.hashring = util.NewHashRing(weights)
 }
 
-// launch session模块launch暂时没有用
+// Connect
+func (module *sessionModule) Connect() {
+}
+
+// Launch
 func (module *sessionModule) Launch() {
 	// fmt.Println("session launched")
 }
 
-// terminate 结束模块
+// Terminate
 func (module *sessionModule) Terminate() {
 	for _, ins := range module.instances {
 		ins.connect.Close()
+	}
+}
+
+// Driver 注册驱动
+func (module *sessionModule) Driver(name string, driver SessionDriver, overrides ...bool) {
+	module.mutex.Lock()
+	defer module.mutex.Unlock()
+
+	if driver == nil {
+		panic("Invalid session driver: " + name)
+	}
+
+	override := true
+	if len(overrides) > 0 {
+		override = overrides[0]
+	}
+
+	if override {
+		module.drivers[name] = driver
+	} else {
+		if module.drivers[name] == nil {
+			module.drivers[name] = driver
+		}
 	}
 }
 

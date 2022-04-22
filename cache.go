@@ -64,7 +64,12 @@ type (
 	}
 )
 
-// register 模块注册中心
+// Builtin
+func (module *cacheModule) Builtin() {
+
+}
+
+// Register 模块注册中心
 func (module *cacheModule) Register(name string, value Any, override bool) {
 	switch config := value.(type) {
 	case CacheDriver:
@@ -144,38 +149,18 @@ func (module *cacheModule) Configure(config Map) {
 	}
 }
 
-// Driver 注册驱动
-func (module *cacheModule) Driver(name string, driver CacheDriver, overrides ...bool) {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
-
-	if driver == nil {
-		panic("Invalid cache driver: " + name)
-	}
-
-	override := true
-	if len(overrides) > 0 {
-		override = overrides[0]
-	}
-
-	if override {
-		module.drivers[name] = driver
-	} else {
-		if module.drivers[name] == nil {
-			module.drivers[name] = driver
-		}
-	}
-}
-
-// initialize 初始化
+// Initialize
 func (module *cacheModule) Initialize() {
-
 	// 如果没有配置任何连接时，默认一个
 	if len(module.configs) == 0 {
 		module.configs[DEFAULT] = CacheConfig{
 			Driver: DEFAULT, Weight: 1, Expiry: time.Hour * 24,
 		}
 	}
+}
+
+// Connect
+func (module *cacheModule) Connect() {
 
 	//记录要参与分布的连接和权重
 	weights := make(map[string]int)
@@ -214,15 +199,37 @@ func (module *cacheModule) Initialize() {
 	module.hashring = util.NewHashRing(weights)
 }
 
-// launch cache模块launch暂时没有用
+// Launch
 func (module *cacheModule) Launch() {
-	// fmt.Println("cache launched")
 }
 
-// terminate 结束模块
+// Terminate
 func (module *cacheModule) Terminate() {
 	for _, ins := range module.instances {
 		ins.connect.Close()
+	}
+}
+
+// Driver 注册驱动
+func (module *cacheModule) Driver(name string, driver CacheDriver, overrides ...bool) {
+	module.mutex.Lock()
+	defer module.mutex.Unlock()
+
+	if driver == nil {
+		panic("Invalid cache driver: " + name)
+	}
+
+	override := true
+	if len(overrides) > 0 {
+		override = overrides[0]
+	}
+
+	if override {
+		module.drivers[name] = driver
+	} else {
+		if module.drivers[name] == nil {
+			module.drivers[name] = driver
+		}
 	}
 }
 

@@ -83,6 +83,24 @@ type (
 	}
 )
 
+// Builtin
+func (module *codecModule) Builtin() {
+
+}
+
+// Register
+func (module *codecModule) Register(name string, value Any, override bool) {
+	switch val := value.(type) {
+	case Codec:
+		module.Codec(name, val, override)
+		// case Crypto:
+		// 	module.Crypto(key, val, overrides...)
+	}
+
+	// fmt.Println("codec registered", name)
+}
+
+// Configure
 func (module *codecModule) Configure(global Map) {
 	var config Map
 	if vv, ok := global["codec"].(Map); ok {
@@ -140,28 +158,15 @@ func (module *codecModule) Configure(global Map) {
 	}
 }
 
-func (module *codecModule) Register(name string, value Any, override bool) {
-	switch val := value.(type) {
-	case Codec:
-		module.Codec(name, val, override)
-		// case Crypto:
-		// 	module.Crypto(key, val, overrides...)
-	}
-
-	// fmt.Println("codec registered", name)
-}
-
 func (module *codecModule) Initialize() {
 	module.fastid = util.NewFastID(module.config.Timebits, module.config.Nodebits, module.config.Stepbits, module.config.Start.Unix())
 	// fmt.Println("codec initialized")
 }
-
-func (module *codecModule) Launch() {
-	// fmt.Println("codec launched")
+func (module *codecModule) Connect() {
 }
-
+func (module *codecModule) Launch() {
+}
 func (module *codecModule) Terminate() {
-	// fmt.Println("codec terminated")
 }
 
 // Codec 注册编解码器

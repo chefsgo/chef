@@ -113,7 +113,12 @@ func (module *tokenModule) Configure(data Map) {
 	// fmt.Println("token configured", module.config)
 }
 
-// register 为token模块注册内容
+// Builtin
+func (module *tokenModule) Builtin() {
+
+}
+
+// Register
 func (module *tokenModule) Register(key string, val Any, override bool) {
 	switch obj := val.(type) {
 	case TokenDriver:
@@ -122,7 +127,7 @@ func (module *tokenModule) Register(key string, val Any, override bool) {
 	// fmt.Println("token registered", key)
 }
 
-// initialize 初始化令牌模块
+// Initialize
 func (module *tokenModule) Initialize() {
 	driver, ok := module.drivers[module.config.Driver]
 	if ok == false {
@@ -145,7 +150,12 @@ func (module *tokenModule) Initialize() {
 	module.connect = connect
 }
 
-// launch 令牌模块launch暂时没有用
+// Connect
+func (module *tokenModule) Connect() {
+	// fmt.Println("token launched")
+}
+
+// Launch
 func (module *tokenModule) Launch() {
 	// fmt.Println("token launched")
 }
@@ -203,11 +213,11 @@ func (module *tokenModule) Validate(token string) (*Token, error) {
 }
 
 // Sign Token签名
-func Sign(token *Token, expiries ...time.Duration) (string, error) {
-	return mToken.Sign(token, expiries...)
-}
+// func Sign(token *Token, expiries ...time.Duration) (string, error) {
+// 	return mToken.Sign(token, expiries...)
+// }
 
-// Validate Token 验签
-func Validate(token string) (*Token, error) {
-	return mToken.Validate(token)
-}
+// // Validate Token 验签
+// func Validate(token string) (*Token, error) {
+// 	return mToken.Validate(token)
+// }

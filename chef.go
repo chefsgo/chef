@@ -14,6 +14,7 @@ var (
 	core = &chef{
 		parsed:      false,
 		initialized: false,
+		connected:   false,
 		launched:    false,
 		config: config{
 			name: CHEF, role: CHEF, version: "0.0.0",
@@ -29,6 +30,7 @@ type (
 	chef struct {
 		parsed      bool
 		initialized bool
+		connected   bool
 		launched    bool
 
 		mutex   sync.RWMutex
@@ -55,9 +57,11 @@ type (
 		setting Map
 	}
 	module interface {
+		Builtin()
 		Register(key string, val Any, override bool)
 		Configure(Map)
 		Initialize()
+		Connect()
 		Launch()
 		Terminate()
 	}
@@ -90,6 +94,18 @@ func (k *chef) loader(name string, m module) {
 		k.names = append(k.names, name)
 	}
 	k.modules[name] = m
+}
+
+// builtin
+// 为模块在初始化之前，注册之前内置一些东西
+// 比如，默认路由什么的
+func (k *chef) builtin() {
+	if k.launched {
+		return
+	}
+	for _, mod := range k.modules {
+		mod.Builtin()
+	}
 }
 
 // register 遍历所有模块调用注册
@@ -277,6 +293,17 @@ func (k *chef) initialize() {
 	k.initialized = true
 }
 
+// connect
+func (k *chef) connect() {
+	if k.connected {
+		return
+	}
+	for _, mod := range k.modules {
+		mod.Connect()
+	}
+	k.connected = true
+}
+
 // launch 启动所有模块
 // 只有部分模块是需要启动的，比如HTTP
 func (k *chef) launch() {
@@ -290,8 +317,8 @@ func (k *chef) launch() {
 
 	Debug("启动了")
 
-	token, err := Sign(&Token{})
-	Debug("token", err, token)
+	// token, err := Sign(&Token{})
+	// Debug("token", err, token)
 
 	// eee, err := TextEncrypt("asfasdf")
 	// Debug("codec", err, eee)
@@ -301,6 +328,8 @@ func (k *chef) launch() {
 
 	s := Generate()
 	Debug("dd", s)
+
+	Trigger("test.Method")
 
 	// Debug("wf么鬼东西啊")
 	// Debug("wf么鬼东西啊")
@@ -333,8 +362,15 @@ func init() {
 	core.loader("log", mLog)
 	core.loader("basic", mBasic)
 	core.loader("codec", mCodec)
+	core.loader("engine", mEngine)
 	core.loader("mutex", mMutex)
-	core.loader("session", mSession)
 	core.loader("cache", mCache)
+	core.loader("data", mData)
+	core.loader("session", mSession)
 	core.loader("token", mToken)
+	// core.loader("view", mView)
+	// core.loader("http", mHttp)
+
+	//builtin
+	core.builtin()
 }

@@ -7,6 +7,15 @@ import (
 	. "github.com/chefsgo/base"
 )
 
+var (
+	OK           = Result(0, "ok", "成功")
+	Fail         = Result(1, "fail", "失败")
+	Retry        = Result(2, "retry", "重试")
+	Invalid      = Result(3, "invalid", "无效请求或数据")
+	Nothing      = Result(4, "nothing", "无效对象")
+	Unauthorized = Result(5, "unauthorized", "无权访问")
+)
+
 type (
 	result struct {
 		code int

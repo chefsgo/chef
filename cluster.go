@@ -91,6 +91,18 @@ type (
 	}
 )
 
+// Builtin
+func (module *clusterModule) Builtin() {
+}
+
+// register 模块注册中心
+func (module *clusterModule) Register(key string, value Any, override bool) {
+	switch val := value.(type) {
+	case ClusterDriver:
+		module.Driver(key, val, override)
+	}
+}
+
 // configure 配置集群
 func (module *clusterModule) Configure(config Map) {
 	var cluster = config
@@ -164,28 +176,15 @@ func (module *clusterModule) Configure(config Map) {
 	}
 }
 
-// register 模块注册中心
-func (module *clusterModule) Register(key string, value Any, override bool) {
-	switch val := value.(type) {
-	case ClusterDriver:
-		module.Driver(key, val, override)
-	}
-}
-
-// launch 集群模块launch暂时没有用
-func (module *clusterModule) Launch() {
-	if module.running {
-		return //已经运行了就不重复运行了，因为集群模块独立最先运行
-	}
-
-	module.running = true
-	// fmt.Println("cluster launched")
-}
-
 // initialize 初始化集群模块
 func (module *clusterModule) Initialize() {
+	// fmt.Println("cluster initialized")
+}
+
+// Connect
+func (module *clusterModule) Connect() {
 	if module.running {
-		return //已经运行了就不重复运行了，因为集群模块独立最先运行
+		return
 	}
 
 	driver, ok := module.drivers[module.config.Driver]
@@ -206,8 +205,15 @@ func (module *clusterModule) Initialize() {
 
 	//保存连接
 	module.connect = connect
+}
 
-	// fmt.Println("cluster initialized")
+// launch 集群模块launch暂时没有用
+func (module *clusterModule) Launch() {
+	if module.running {
+		return
+	}
+
+	module.running = true
 }
 
 // terminate 关闭集群模块
