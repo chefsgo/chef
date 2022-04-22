@@ -174,6 +174,8 @@ func (k *chef) parse() {
 		}
 	}
 
+	// 待处理，从环境变量，和命令行读取配置
+
 	//从环境变量中读取
 
 	// // 参数大于2个，就解析参数
@@ -226,6 +228,8 @@ func (k *chef) configure(config Map) {
 		return
 	}
 
+	//注意，集群模块最先处理
+
 	//处理core中的配置
 	if name, ok := config["name"].(string); ok && name != k.config.name {
 		if k.config.name == k.config.role {
@@ -255,6 +259,12 @@ func (k *chef) configure(config Map) {
 	}
 }
 
+// cluster 独立运行集群
+func (k *chef) cluster() {
+	mCluster.Initialize()
+	mCluster.Launch()
+}
+
 // initialize 初始化所有模块
 func (k *chef) initialize() {
 	if k.initialized {
@@ -279,11 +289,18 @@ func (k *chef) launch() {
 	k.launched = true
 
 	Debug("启动了")
-	token, err := mToken.Sign(&Token{ActId: "12123"})
+
+	token, err := Sign(&Token{})
 	Debug("token", err, token)
 
-	eee, err := mCodec.EncodeNumber(123)
-	Debug("codec", err, eee)
+	// eee, err := TextEncrypt("asfasdf")
+	// Debug("codec", err, eee)
+
+	id := Sequence()
+	Debug("id", id)
+
+	s := Generate()
+	Debug("dd", s)
 
 	// Debug("wf么鬼东西啊")
 	// Debug("wf么鬼东西啊")
@@ -312,6 +329,7 @@ func (k *chef) terminate() {
 
 //将各种模块按顺序注册到核心
 func init() {
+	core.loader("cluster", mCluster)
 	core.loader("log", mLog)
 	core.loader("basic", mBasic)
 	core.loader("codec", mCodec)

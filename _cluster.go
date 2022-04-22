@@ -1,7 +1,6 @@
 package chef
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -111,7 +110,7 @@ func (c *cluster) NotifyMsg(b []byte) {
 	}
 
 	var shares share
-	err := json.Unmarshal(b, &shares)
+	err := JSONUnmarshal(b, &shares)
 	if err != nil {
 		return
 	}
@@ -135,7 +134,7 @@ func (c *cluster) LocalState(join bool) []byte {
 	shares := c.shares
 	c.mutex.RUnlock()
 
-	bytes, err := json.Marshal(shares)
+	bytes, err := JSONMarshal(shares)
 	if err != nil {
 		return []byte{}
 	}
@@ -149,7 +148,7 @@ func (c *cluster) MergeRemoteState(buf []byte, join bool) {
 	}
 
 	var shares share
-	if err := json.Unmarshal(buf, &shares); err != nil {
+	if err := JSONMarshal(buf, &shares); err != nil {
 		return
 	}
 	c.mutex.Lock()

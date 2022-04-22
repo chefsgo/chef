@@ -33,12 +33,14 @@ func Setting() Map {
 // 就可以在临时代码中，调用chef.Ready()，然后做你需要做的事情
 func Ready() {
 	core.parse()
+	core.cluster()
 	core.initialize()
 }
 
 // Go 直接开跑
 func Go() {
 	core.parse()
+	core.cluster()
 	core.initialize()
 	core.launch()
 	core.waiting()

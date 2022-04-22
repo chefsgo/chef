@@ -82,8 +82,9 @@ type (
 	}
 
 	clusterModule struct {
-		mutex  sync.Mutex
-		config ClusterConfig
+		mutex   sync.Mutex
+		config  ClusterConfig
+		running bool
 
 		drivers map[string]ClusterDriver
 		connect ClusterConnect
@@ -171,8 +172,22 @@ func (module *clusterModule) Register(key string, value Any, override bool) {
 	}
 }
 
+// launch 集群模块launch暂时没有用
+func (module *clusterModule) Launch() {
+	if module.running {
+		return //已经运行了就不重复运行了，因为集群模块独立最先运行
+	}
+
+	module.running = true
+	// fmt.Println("cluster launched")
+}
+
 // initialize 初始化集群模块
 func (module *clusterModule) Initialize() {
+	if module.running {
+		return //已经运行了就不重复运行了，因为集群模块独立最先运行
+	}
+
 	driver, ok := module.drivers[module.config.Driver]
 	if ok == false {
 		panic("Invalid cluster driver: " + module.config.Driver)
@@ -193,11 +208,6 @@ func (module *clusterModule) Initialize() {
 	module.connect = connect
 
 	// fmt.Println("cluster initialized")
-}
-
-// launch 集群模块launch暂时没有用
-func (module *clusterModule) Launch() {
-	// fmt.Println("cluster launched")
 }
 
 // terminate 关闭集群模块
@@ -287,10 +297,7 @@ func (module *clusterModule) Peers() []ClusterPeer {
 // 	return mCluster.Write(key, val)
 // }
 
+// Peers 返回所有节点
 func Peers() []ClusterPeer {
 	return mCluster.Peers()
 }
-
-// func ClusterServices() []Map {
-// 	return mCluster.Services()
-// }

@@ -186,10 +186,9 @@ func (module *tokenModule) Sign(token *Token, expiries ...time.Duration) (string
 		expiry = expiries[0]
 	}
 
-	// 待完善
-	// if data.ActId == "" {
-	// 	data.ActId = mCodec.Unique()
-	// }
+	if token.ActId == "" {
+		token.ActId = mCodec.Generate()
+	}
 
 	return module.connect.Sign(token, expiry)
 }
@@ -201,4 +200,14 @@ func (module *tokenModule) Validate(token string) (*Token, error) {
 	}
 
 	return module.connect.Validate(token)
+}
+
+// Sign Token签名
+func Sign(token *Token, expiries ...time.Duration) (string, error) {
+	return mToken.Sign(token, expiries...)
+}
+
+// Validate Token 验签
+func Validate(token string) (*Token, error) {
+	return mToken.Validate(token)
 }
