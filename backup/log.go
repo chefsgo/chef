@@ -141,7 +141,7 @@ type (
 	}
 )
 
-// Builtin
+// register 为log模块注册内容
 func (module *logModule) Builtin() {
 }
 
@@ -194,13 +194,8 @@ func (module *logModule) Configure(data Map) {
 	// fmt.Println("log configured", module.config)
 }
 
-// Initialize
+// initialize 初始化日志模块
 func (module *logModule) Initialize() {
-
-}
-
-// Connect
-func (module *logModule) Connect() {
 	driver, ok := module.drivers[module.config.Driver]
 	if ok == false {
 		panic("Invalid log driver: " + module.config.Driver)
@@ -228,6 +223,7 @@ func (module *logModule) Connect() {
 		go module.eventLoop()
 	}
 
+	// fmt.Println("log initialized", module.config.Sync)
 }
 
 // launch 日志模块launch暂时没有用

@@ -169,40 +169,6 @@ func (module *codecModule) Launch() {
 func (module *codecModule) Terminate() {
 }
 
-// Codec 注册编解码器
-func (module *codecModule) Codec(name string, config Codec, override bool) {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
-
-	alias := make([]string, 0)
-	if name != "" {
-		alias = append(alias, name)
-	}
-	if config.Alias != nil {
-		alias = append(alias, config.Alias...)
-	}
-
-	for _, key := range alias {
-		if override {
-			module.codecs[key] = config
-		} else {
-			if _, ok := module.codecs[key]; ok == false {
-				module.codecs[key] = config
-			}
-		}
-	}
-
-}
-
-// Codecs 获取所有编解码器
-func (module *codecModule) Codecs() map[string]Codec {
-	codecs := map[string]Codec{}
-	for k, v := range module.codecs {
-		codecs[k] = v
-	}
-	return codecs
-}
-
 // Sequence 雪花ID
 func (module *codecModule) Sequence() int64 {
 	return module.fastid.NextID()

@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	. "github.com/chefsgo/base"
 	"github.com/chefsgo/util"
-
-	"github.com/BurntSushi/toml"
 )
 
 type (

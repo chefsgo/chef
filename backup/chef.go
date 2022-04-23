@@ -10,6 +10,22 @@ import (
 	. "github.com/chefsgo/base"
 )
 
+var (
+	core = &chef{
+		parsed:      false,
+		initialized: false,
+		connected:   false,
+		launched:    false,
+		config: config{
+			name: CHEF, role: CHEF, version: "0.0.0",
+			setting: Map{},
+		},
+
+		names:   make([]string, 0),
+		modules: make(map[string]module, 0),
+	}
+)
+
 type (
 	chef struct {
 		parsed      bool
@@ -20,7 +36,7 @@ type (
 		mutex   sync.RWMutex
 		config  config
 		names   []string
-		modules map[string]Module
+		modules map[string]module
 	}
 	config struct {
 		// name 项目名称
@@ -40,18 +56,27 @@ type (
 		// 实际业务代码中一般需要用的配置
 		setting Map
 	}
+	module interface {
+		Builtin()
+		Register(key string, val Any, override bool)
+		Configure(Map)
+		Initialize()
+		Connect()
+		Launch()
+		Terminate()
+	}
 )
 
 // setting 获取setting
-func (this *chef) setting() Map {
-	this.mutex.RLock()
-	defer this.mutex.RUnlock()
+func (k *chef) setting() Map {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
 
 	// 为了线程安全，为了避免外部修改，这里复制一份
 	// 需要不需要深度复制？二层以下的map,[]map会不会因为引用的关系被修改？
 	// 以上需要测试go的特性再处理，但是通常不会有什么问题，待优化
 	setting := Map{}
-	for k, v := range this.config.setting {
+	for k, v := range k.config.setting {
 		setting[k] = v
 	}
 
@@ -60,19 +85,26 @@ func (this *chef) setting() Map {
 
 // loader 把模块注册到core
 // 遍历所有已经注册过的模块，避免重复注册
-func (this *chef) loader(name string, mod Any) {
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
+func (k *chef) loader(name string, m module) {
+	k.mutex.Lock()
+	defer k.mutex.Unlock()
 
-	if module, ok := mod.(Module); ok == false {
-		panic(name + " not a module")
+	_, exists := k.modules[name]
+	if exists == false {
+		k.names = append(k.names, name)
+	}
+	k.modules[name] = m
+}
+
+// builtin
+// 为模块在初始化之前，注册之前内置一些东西
+// 比如，默认路由什么的
+func (k *chef) builtin() {
+	if k.launched {
 		return
-	} else {
-		_, exists := this.modules[name]
-		if exists == false {
-			this.names = append(this.names, name)
-		}
-		this.modules[name] = module
+	}
+	for _, mod := range k.modules {
+		mod.Builtin()
 	}
 }
 
@@ -103,9 +135,6 @@ func (k *chef) register(regs ...Any) {
 		if mmm, ok := cfg.(Map); ok {
 			// 兼容所有模块的配置注册
 			k.configure(mmm)
-		} else if mod, ok := cfg.(Module); ok {
-			// 兼容所有模块的配置注册
-			k.loader(name, mod)
 		} else {
 			//实际注册到各模块
 			for _, mod := range k.modules {
@@ -248,8 +277,8 @@ func (k *chef) configure(config Map) {
 
 // cluster 独立运行集群
 func (k *chef) cluster() {
-	// mCluster.Initialize()
-	// mCluster.Launch()
+	mCluster.Initialize()
+	mCluster.Launch()
 }
 
 // initialize 初始化所有模块
@@ -285,6 +314,25 @@ func (k *chef) launch() {
 		mod.Launch()
 	}
 	k.launched = true
+
+	Debug("启动了")
+
+	// token, err := Sign(&Token{})
+	// Debug("token", err, token)
+
+	// eee, err := TextEncrypt("asfasdf")
+	// Debug("codec", err, eee)
+
+	id := Sequence()
+	Debug("id", id)
+
+	s := Generate()
+	Debug("dd", s)
+
+	Trigger("test.Method")
+
+	// Debug("wf么鬼东西啊")
+	// Debug("wf么鬼东西啊")
 }
 
 // waiting 等待系统退出信号
@@ -306,4 +354,23 @@ func (k *chef) terminate() {
 		mod.Terminate()
 	}
 	k.launched = false
+}
+
+//将各种模块按顺序注册到核心
+func init() {
+	core.loader("cluster", mCluster)
+	core.loader("log", mLog)
+	core.loader("basic", mBasic)
+	core.loader("codec", mCodec)
+	core.loader("engine", mEngine)
+	core.loader("mutex", mMutex)
+	core.loader("cache", mCache)
+	core.loader("data", mData)
+	core.loader("session", mSession)
+	core.loader("token", mToken)
+	// core.loader("view", mView)
+	// core.loader("http", mHttp)
+
+	//builtin
+	core.builtin()
 }
