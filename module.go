@@ -14,3 +14,8 @@ type (
 		Terminate()
 	}
 )
+
+func init() {
+	Register("basic", mBasic)
+	Register("codec", mCodec)
+}
