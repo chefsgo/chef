@@ -20,4 +20,15 @@ Chefs.go chef
     默认的  cache, session, mutex 驱动，都要更新，因为，没有做自动过期处理
 
 
+    log 模块的 管道 flush，结束，有问题，还没调
+
+    queue redis 驱动， 多协程队列，关闭退出时，会有BUG，可能不会等待任务全部执行完成
+
+    method调用的时候，必须newContext，只共享 meta 元数据，
+    要不然连续调用的时候,name,config,valud,args会全部串线被修改
+    method的调用，需要优化
+
+    要不然就是直接拿Meta做为父类， 再考虑
+
+
 -->

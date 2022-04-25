@@ -514,3 +514,13 @@ func DecryptTEXT(s string) (string, error) {
 func DecryptTEXTS(s string) ([]string, error) {
 	return mCodec.DecryptTEXTS(s)
 }
+
+// Sequence 雪花ID
+func Sequence() int64 {
+	return mCodec.Sequence()
+}
+
+// Unique 雪花ID 转数字加密
+func Generate(prefixs ...string) string {
+	return mCodec.Generate(prefixs...)
+}

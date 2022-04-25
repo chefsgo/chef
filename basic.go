@@ -433,12 +433,10 @@ func (module *basicModule) typeMethod(name string) (TypeValidFunc, TypeValueFunc
 	return module.typeValid(name), module.typeValue(name)
 }
 
-func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pass bool, ctxs ...Context) Res {
-	var ctx Context
+func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pass bool, ctxs ...*Context) Res {
+	var ctx *Context
 	if len(ctxs) > 0 && ctxs[0] != nil {
 		ctx = ctxs[0]
-	} else {
-		ctx = newContext()
 	}
 
 	/*
@@ -715,13 +713,13 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 							if fieldValueCall != nil {
 								//对时间值做时区处理
 								if ctx != nil {
-									if ctx.Zone() != time.Local {
+									if ctx.Timezone() != time.Local {
 										if vv, ok := fieldValue.(time.Time); ok {
-											fieldValue = vv.In(ctx.Zone())
+											fieldValue = vv.In(ctx.Timezone())
 										} else if vvs, ok := fieldValue.([]time.Time); ok {
 											newTimes := []time.Time{}
 											for _, vv := range vvs {
-												newTimes = append(newTimes, vv.In(ctx.Zone()))
+												newTimes = append(newTimes, vv.In(ctx.Timezone()))
 											}
 											fieldValue = newTimes
 										}
@@ -892,6 +890,6 @@ func Types() map[string]Type {
 	return mBasic.Types()
 }
 
-func Mapping(config Vars, data Map, value Map, argn bool, pass bool, ctxs ...Context) Res {
+func Mapping(config Vars, data Map, value Map, argn bool, pass bool, ctxs ...*Context) Res {
 	return mBasic.Mapping(config, data, value, argn, pass, ctxs...)
 }

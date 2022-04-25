@@ -284,6 +284,10 @@ func (k *chef) launch() {
 	for _, mod := range k.modules {
 		mod.Launch()
 	}
+
+	//这里是触发器，异步
+	Trigger(StartTrigger)
+
 	k.launched = true
 }
 
@@ -300,6 +304,10 @@ func (k *chef) waiting() {
 // terminate 终止结束所有模块
 // 终止顺序需要和初始化顺序相反以保证各模块依赖
 func (k *chef) terminate() {
+
+	//停止前触发器，同步
+	Execute(StopTrigger)
+
 	for i := len(k.names) - 1; i >= 0; i-- {
 		name := k.names[i]
 		mod := k.modules[name]

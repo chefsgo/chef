@@ -18,4 +18,5 @@ type (
 func init() {
 	Register("basic", mBasic)
 	Register("codec", mCodec)
+	Register("engine", mEngine)
 }
