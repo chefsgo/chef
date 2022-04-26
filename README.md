@@ -48,4 +48,6 @@ Chefs.go chef
     event,redis还没初始化完成，因为监听是独立协池，所以
     解决方法：所有异步launch的模块，使用一个  WaitGroup 来同步等待 完成初始化
 
+    event redis 驱动，暂时还没有好的分组想法或方案，待处理
+
 -->
