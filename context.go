@@ -54,16 +54,15 @@ func newContext(metas ...Meta) *Context {
 	ctx := &Context{
 		language: DEFAULT,
 		timezone: time.Local,
+
+		//待处理，meta并且拥有 language, timezone，要不太乱了
+
 		//待处理
 		// tempfiles: make([]string, 0),
 		// databases: make(map[string]DataBase),
 	}
 	if len(metas) > 0 {
 		meta := metas[0]
-
-		if meta.Trace == "" {
-			meta.Trace = Generate()
-		}
 
 		if meta.Language != "" {
 			ctx.SetLanguage(meta.Language)
@@ -77,6 +76,10 @@ func newContext(metas ...Meta) *Context {
 		}
 
 		ctx.meta = meta
+	}
+
+	if ctx.meta.Trace == "" {
+		ctx.meta.Trace = Generate()
 	}
 
 	return ctx
