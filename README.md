@@ -50,4 +50,6 @@ Chefs.go chef
 
     event redis 驱动，暂时还没有好的分组想法或方案，待处理
 
+    所有模块的configure 要检查，不直接从顶层map解析数据
+
 -->

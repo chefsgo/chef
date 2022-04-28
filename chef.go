@@ -241,7 +241,8 @@ func (k *chef) configure(config Map) {
 	}
 
 	// 把配置下发到各个模块
-	for _, mod := range k.modules {
+	for _, name := range k.names {
+		mod := k.modules[name]
 		mod.Configure(config)
 	}
 }
@@ -269,7 +270,8 @@ func (k *chef) connect() {
 	if k.connected {
 		return
 	}
-	for _, mod := range k.modules {
+	for _, name := range k.names {
+		mod := k.modules[name]
 		mod.Connect()
 	}
 	k.connected = true
@@ -281,7 +283,8 @@ func (k *chef) launch() {
 	if k.launched {
 		return
 	}
-	for _, mod := range k.modules {
+	for _, name := range k.names {
+		mod := k.modules[name]
 		mod.Launch()
 	}
 
