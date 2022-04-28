@@ -52,4 +52,7 @@ Chefs.go chef
 
     所有模块的configure 要检查，不直接从顶层map解析数据
 
+
+    chef 各模块的委托方法
+
 -->
