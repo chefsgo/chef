@@ -432,10 +432,10 @@ func (module *basicModule) typeMethod(name string) (TypeValidFunc, TypeValueFunc
 	return module.typeValid(name), module.typeValue(name)
 }
 
-func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pass bool, ctxs ...*Context) Res {
-	var ctx *Context
-	if len(ctxs) > 0 && ctxs[0] != nil {
-		ctx = ctxs[0]
+func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pass bool, zones ...*time.Location) Res {
+	timezone := time.Local
+	if len(zones) > 0 {
+		timezone = zones[0]
 	}
 
 	/*
@@ -711,18 +711,15 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 							//包装值
 							if fieldValueCall != nil {
 								//对时间值做时区处理
-								if ctx != nil {
-									if ctx.Timezone() != time.Local {
-										if vv, ok := fieldValue.(time.Time); ok {
-											fieldValue = vv.In(ctx.Timezone())
-										} else if vvs, ok := fieldValue.([]time.Time); ok {
-											newTimes := []time.Time{}
-											for _, vv := range vvs {
-												newTimes = append(newTimes, vv.In(ctx.Timezone()))
-											}
-											fieldValue = newTimes
-										}
+
+								if vv, ok := fieldValue.(time.Time); ok {
+									fieldValue = vv.In(timezone)
+								} else if vvs, ok := fieldValue.([]time.Time); ok {
+									newTimes := []time.Time{}
+									for _, vv := range vvs {
+										newTimes = append(newTimes, vv.In(timezone))
 									}
+									fieldValue = newTimes
 								}
 
 								fieldValue = fieldValueCall(fieldValue, fieldConfig)
@@ -801,7 +798,7 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 				v := Map{}
 
 				// err := module.Parse(trees, jsonConfig, d, v, argn, pass);
-				res := module.Mapping(jsonConfig, d, v, argn, pass, ctx)
+				res := module.Mapping(jsonConfig, d, v, argn, pass, timezone)
 				if res != nil && res.Fail() {
 					return res
 				} else {
@@ -889,6 +886,6 @@ func Types() map[string]Type {
 	return mBasic.Types()
 }
 
-func Mapping(config Vars, data Map, value Map, argn bool, pass bool, ctxs ...*Context) Res {
-	return mBasic.Mapping(config, data, value, argn, pass, ctxs...)
+func Mapping(config Vars, data Map, value Map, argn bool, pass bool, zones ...*time.Location) Res {
+	return mBasic.Mapping(config, data, value, argn, pass, zones...)
 }

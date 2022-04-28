@@ -32,15 +32,7 @@ const (
 )
 
 type (
-	engineConfig struct {
-		Pool    int `toml:"pool"`
-		Setting Map `toml:"setting"`
-	}
 	Method struct {
-		accept string `json:"-"` //不为空表示为服务，表示消息分组
-		pool   int    `json:"-"` //池大小，<= 0 表示不限，使用全局线程池, > 0 表示，当前节点限制此方法的并发数，注意：只在，事件，队列，服务，中生效， 本地调用不限制
-		retry  int    `json:"-"` //队列有效，表示重试次数
-
 		Name     string   `json:"name"`
 		Text     string   `json:"desc"`
 		Alias    []string `json:"-"`
@@ -54,20 +46,16 @@ type (
 		Token bool `json:"token"`
 		Auth  bool `json:"auth"`
 	}
-	// Service struct {
-	// 	Name     string   `json:"name"`
-	// 	Text     string   `json:"desc"`
-	// 	Alias    []string `json:"-"`
-	// 	Nullable bool     `json:"null"`
-	// 	Args     Vars     `json:"args"`
-	// 	Data     Vars     `json:"data"`
-	// 	Setting  Map      `json:"-"`
-	// 	Coding   bool     `json:"-"`
-	// 	Action   Any      `json:"-"`
 
-	// 	Token bool `json:"token"`
-	// 	Auth  bool `json:"auth"`
-	// }
+	Context struct {
+		*Meta
+		Name    string
+		Config  Method
+		Setting Map
+
+		Value Map
+		Args  Map
+	}
 
 	engineLibrary struct {
 		engine *engineModule
@@ -75,18 +63,15 @@ type (
 	}
 
 	Logic struct {
-		//老代码待优化，
-		context *Context
-		engine  *engineModule
+		meta   *Meta
+		engine *engineModule
 
 		Name    string
 		Setting Map
 	}
 
 	engineModule struct {
-		mutex  sync.Mutex
-		config engineConfig
-
+		mutex   sync.Mutex
 		methods map[string]Method
 	}
 )
@@ -109,43 +94,11 @@ func (module *engineModule) Register(key string, value Any, override bool) {
 
 // Configure
 func (module *engineModule) Configure(value Any) {
-	if cfg, ok := value.(engineConfig); ok {
-		module.config = cfg
-		return
-	}
 
-	var global Map
-	if cfg, ok := value.(Map); ok {
-		global = cfg
-	} else {
-		return
-	}
-
-	var config Map
-	if vv, ok := global["engine"].(Map); ok {
-		config = vv
-	}
-
-	if pool, ok := config["pool"].(int); ok {
-		module.config.Pool = int(pool)
-	}
-	if pool, ok := config["pool"].(int64); ok {
-		module.config.Pool = int(pool)
-	}
-
-	// module.config = config.Engine
 }
 
 // Initialize
 func (module *engineModule) Initialize() {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
-
-	if module.config.Pool <= 0 {
-		//不做处理，0表示不限制，
-		module.config.Pool = 0
-	}
-
 }
 
 // Connect
@@ -160,16 +113,6 @@ func (module *engineModule) Launch() {
 func (module *engineModule) Terminate() {
 }
 
-// 待处理
-// //注册服务
-// func (module *engineModule) Service(name string, config Service, override bool) {
-// 	group := CHEF
-// 	if core.config.name != "" {
-// 		group = core.config.name
-// 	}
-// 	method := Method{group, 0, 0, config.Name, config.Text, config.Alias, config.Nullable, config.Args, config.Data, config.Setting, config.Coding, config.Action, config.Token, config.Auth}
-// 	module.Method(name, method, override)
-// }
 func (module *engineModule) Method(name string, config Method, override bool) {
 	module.mutex.Lock()
 	defer module.mutex.Unlock()
@@ -193,13 +136,9 @@ func (module *engineModule) Method(name string, config Method, override bool) {
 	}
 }
 
-//模块内置内容
-func (module *engineModule) builtin(config Map) {
-}
-
 //给本地 invoke 的，加上远程调用
-func (module *engineModule) Call(ctx *Context, name string, value Map, settings ...Map) (Map, Res, string) {
-	data, callRes, tttt := module.call(ctx, name, value, settings...)
+func (module *engineModule) Call(meta *Meta, name string, value Map, settings ...Map) (Map, Res, string) {
+	data, callRes, tttt := module.call(meta, name, value, settings...)
 
 	if callRes == Nothing {
 		//待处理，远程调用
@@ -224,14 +163,27 @@ func (module *engineModule) Call(ctx *Context, name string, value Map, settings 
 
 //真实的方法调用，纯本地调用
 //此方法不能远程调用，要不然就死循环了
-//bus会直接调用此方法
-func (module *engineModule) call(ctx *Context, name string, value Map, settings ...Map) (Map, Res, string) {
+func (module *engineModule) call(meta *Meta, name string, value Map, settings ...Map) (Map, Res, string) {
 	tttt := engineInvoke
 	if _, ok := module.methods[name]; ok == false {
 		return nil, Nothing, tttt
 	}
 
 	config := module.methods[name]
+
+	ctx := &Context{Meta: meta}
+	ctx.Name = name
+	ctx.Config = config
+	ctx.Setting = Map{}
+
+	for k, v := range config.Setting {
+		ctx.Setting[k] = v
+	}
+	if len(settings) > 0 {
+		for k, v := range settings[0] {
+			ctx.Setting[k] = v
+		}
+	}
 
 	// 待处理
 
@@ -244,39 +196,18 @@ func (module *engineModule) call(ctx *Context, name string, value Map, settings 
 	// 	return nil, Unauthorized, tttt
 	// }
 
-	var setting Map
-	if len(settings) > 0 {
-		setting = settings[0]
-	} else {
-		setting = Map{}
-		if config.Setting != nil {
-			for k, v := range config.Setting {
-				setting[k] = v
-			}
-		}
-	}
-
-	if ctx == nil {
-		ctx = newContext()
-		defer ctx.End()
-	}
 	if value == nil {
-		value = make(Map)
-	}
-	if setting == nil {
-		setting = make(Map)
+		value = Map{}
 	}
 
 	args := Map{}
 	if config.Args != nil {
-		res := mBasic.Mapping(config.Args, value, args, config.Nullable, false, ctx)
+		res := mBasic.Mapping(config.Args, value, args, config.Nullable, false, ctx.Timezone())
 		if res != nil && res.Fail() {
 			return nil, res, tttt
 		}
 	}
 
-	ctx.Name = name
-	ctx.Setting = setting
 	ctx.Value = value
 	ctx.Args = args
 
@@ -367,7 +298,7 @@ func (module *engineModule) call(ctx *Context, name string, value Map, settings 
 	//参数解析
 	if config.Data != nil {
 		out := Map{}
-		err := mBasic.Mapping(config.Data, data, out, false, false, ctx)
+		err := mBasic.Mapping(config.Data, data, out, false, false, ctx.Timezone())
 		if err == nil || err.OK() {
 			return out, result, tttt
 		}
@@ -377,18 +308,18 @@ func (module *engineModule) call(ctx *Context, name string, value Map, settings 
 	return data, result, tttt
 }
 
-func (module *engineModule) Execute(ctx *Context, name string, value Map, settings ...Map) (Map, Res) {
-	m, r, _ := module.Call(ctx, name, value, settings...)
+func (module *engineModule) Execute(meta *Meta, name string, value Map, settings ...Map) (Map, Res) {
+	m, r, _ := module.Call(meta, name, value, settings...)
 	return m, r
 }
 
-func (module *engineModule) Trigger(ctx *Context, name string, value Map, settings ...Map) {
-	go module.Call(ctx, name, value, settings...)
+func (module *engineModule) Trigger(meta *Meta, name string, value Map, settings ...Map) {
+	go module.Call(meta, name, value, settings...)
 }
 
 //以下几个方法要做些交叉处理
-func (module *engineModule) Invoke(ctx *Context, name string, value Map, settings ...Map) (Map, Res) {
-	data, res, tttt := module.Call(ctx, name, value, settings...)
+func (module *engineModule) Invoke(meta *Meta, name string, value Map, settings ...Map) (Map, Res) {
+	data, res, tttt := module.Call(meta, name, value, settings...)
 	if res != nil && res.Fail() {
 		return nil, res
 	}
@@ -405,8 +336,8 @@ func (module *engineModule) Invoke(ctx *Context, name string, value Map, setting
 	return item, res
 }
 
-func (module *engineModule) Invokes(ctx *Context, name string, value Map, settings ...Map) ([]Map, Res) {
-	data, res, _ := module.Call(ctx, name, value, settings...)
+func (module *engineModule) Invokes(meta *Meta, name string, value Map, settings ...Map) ([]Map, Res) {
+	data, res, _ := module.Call(meta, name, value, settings...)
 
 	if res != nil && res.Fail() {
 		return []Map{}, res
@@ -428,21 +359,21 @@ func (module *engineModule) Invokes(ctx *Context, name string, value Map, settin
 	}
 	return nil, res
 }
-func (module *engineModule) Invoked(ctx *Context, name string, value Map, settings ...Map) (bool, Res) {
-	_, res, _ := module.Call(ctx, name, value, settings...)
+func (module *engineModule) Invoked(meta *Meta, name string, value Map, settings ...Map) (bool, Res) {
+	_, res, _ := module.Call(meta, name, value, settings...)
 	if res == nil || res.OK() {
 		return true, res
 	}
 	return false, res
 }
-func (module *engineModule) Invoking(ctx *Context, name string, offset, limit int64, value Map, settings ...Map) (int64, []Map, Res) {
+func (module *engineModule) Invoking(meta *Meta, name string, offset, limit int64, value Map, settings ...Map) (int64, []Map, Res) {
 	if value == nil {
 		value = Map{}
 	}
 	value["offset"] = offset
 	value["limit"] = limit
 
-	data, res, _ := module.Call(ctx, name, value, settings...)
+	data, res, _ := module.Call(meta, name, value, settings...)
 	if res != nil && res.Fail() {
 		return 0, nil, res
 	}
@@ -456,8 +387,8 @@ func (module *engineModule) Invoking(ctx *Context, name string, offset, limit in
 	return 0, []Map{data}, res
 }
 
-func (module *engineModule) Invoker(ctx *Context, name string, value Map, settings ...Map) (Map, []Map, Res) {
-	data, res, _ := module.Call(ctx, name, value, settings...)
+func (module *engineModule) Invoker(meta *Meta, name string, value Map, settings ...Map) (Map, []Map, Res) {
+	data, res, _ := module.Call(meta, name, value, settings...)
 	if res != nil && res.Fail() {
 		return nil, nil, res
 	}
@@ -472,8 +403,8 @@ func (module *engineModule) Invoker(ctx *Context, name string, value Map, settin
 	return data, []Map{data}, res
 }
 
-func (module *engineModule) Invokee(ctx *Context, name string, value Map, settings ...Map) (float64, Res) {
-	data, res, _ := module.Call(ctx, name, value, settings...)
+func (module *engineModule) Invokee(meta *Meta, name string, value Map, settings ...Map) (float64, Res) {
+	data, res, _ := module.Call(meta, name, value, settings...)
 	if res != nil && res.Fail() {
 		return 0, res
 	}
@@ -490,12 +421,12 @@ func (module *engineModule) Invokee(ctx *Context, name string, value Map, settin
 func (module *engineModule) Library(name string) *engineLibrary {
 	return &engineLibrary{module, name}
 }
-func (module *engineModule) Logic(ctx *Context, name string, settings ...Map) *Logic {
+func (module *engineModule) Logic(meta *Meta, name string, settings ...Map) *Logic {
 	setting := make(Map)
 	if len(settings) > 0 {
 		setting = settings[0]
 	}
-	return &Logic{ctx, module, name, setting}
+	return &Logic{meta, module, name, setting}
 }
 
 // 获取参数定义
@@ -549,8 +480,8 @@ func (lgc *Logic) Invoke(name string, values ...Any) Map {
 			value = vv
 		}
 	}
-	vvv, res := lgc.engine.Invoke(lgc.context, lgc.naming(name), value, lgc.Setting)
-	lgc.context.result = res
+	vvv, res := lgc.engine.Invoke(lgc.meta, lgc.naming(name), value, lgc.Setting)
+	lgc.meta.result = res
 	return vvv
 }
 
@@ -561,8 +492,8 @@ func (logic *Logic) Invokes(name string, values ...Any) []Map {
 			value = vv
 		}
 	}
-	vvs, res := logic.engine.Invokes(logic.context, logic.naming(name), value, logic.Setting)
-	logic.context.result = res
+	vvs, res := logic.engine.Invokes(logic.meta, logic.naming(name), value, logic.Setting)
+	logic.meta.result = res
 	return vvs
 }
 func (logic *Logic) Invoked(name string, values ...Any) bool {
@@ -572,8 +503,8 @@ func (logic *Logic) Invoked(name string, values ...Any) bool {
 			value = vv
 		}
 	}
-	vvv, res := logic.engine.Invoked(logic.context, logic.naming(name), value, logic.Setting)
-	logic.context.result = res
+	vvv, res := logic.engine.Invoked(logic.meta, logic.naming(name), value, logic.Setting)
+	logic.meta.result = res
 	return vvv
 }
 func (logic *Logic) Invoking(name string, offset, limit int64, values ...Any) (int64, []Map) {
@@ -583,8 +514,8 @@ func (logic *Logic) Invoking(name string, offset, limit int64, values ...Any) (i
 			value = vv
 		}
 	}
-	count, items, res := logic.engine.Invoking(logic.context, logic.naming(name), offset, limit, value, logic.Setting)
-	logic.context.result = res
+	count, items, res := logic.engine.Invoking(logic.meta, logic.naming(name), offset, limit, value, logic.Setting)
+	logic.meta.result = res
 	return count, items
 }
 
@@ -596,8 +527,8 @@ func (logic *Logic) Invoker(name string, values ...Any) (Map, []Map) {
 			value = vv
 		}
 	}
-	item, items, res := logic.engine.Invoker(logic.context, logic.naming(name), value, logic.Setting)
-	logic.context.result = res
+	item, items, res := logic.engine.Invoker(logic.meta, logic.naming(name), value, logic.Setting)
+	logic.meta.result = res
 	return item, items
 }
 
@@ -608,8 +539,8 @@ func (logic *Logic) Invokee(name string, values ...Any) float64 {
 			value = vv
 		}
 	}
-	count, res := logic.engine.Invokee(logic.context, logic.naming(name), value, logic.Setting)
-	logic.context.result = res
+	count, res := logic.engine.Invokee(logic.meta, logic.naming(name), value, logic.Setting)
+	logic.meta.result = res
 	return count
 }
 
