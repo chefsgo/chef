@@ -176,7 +176,6 @@ func (module *basicModule) Terminate() {
 }
 
 // State 注册状态
-// 如果State携带了String，则自动注册成默认语言字串
 func (module *basicModule) State(config State, override bool) {
 	for key, val := range config {
 		if override {
@@ -249,8 +248,8 @@ func (module *basicModule) String(lang, name string, args ...Any) string {
 	//把所有语言字串的.都替换成_
 	name = strings.Replace(name, ".", "_", -1)
 
-	defaultKey := fmt.Sprintf("%v.%v", DEFAULT, name)
 	langKey := fmt.Sprintf("%v.%v", lang, name)
+	defaultKey := fmt.Sprintf("%v.%v", DEFAULT, name)
 
 	langStr := ""
 

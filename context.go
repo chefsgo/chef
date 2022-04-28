@@ -170,7 +170,7 @@ func (ctx *Context) Result(res ...Res) Res {
 		return err
 	} else {
 		if ctx.result == nil {
-			return OK
+			return nil //nil 也要默认是成功
 		}
 		err := ctx.result
 		ctx.result = nil
