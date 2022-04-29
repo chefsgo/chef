@@ -1,5 +1,16 @@
 package chef
 
+type (
+	env = int
+)
+
+const (
+	_ env = iota
+	developing
+	testing
+	production
+)
+
 const (
 	CHEF    = "chef"
 	DEFAULT = "default"

@@ -99,7 +99,7 @@ func Result(code int, state string, text string, overrides ...bool) Res {
 
 	//自动注册状态和字串
 	mBasic.State(State{state: code}, override)
-	mBasic.Lang(DEFAULT, Lang{state: text}, override)
+	mBasic.languageString(DEFAULT, Strs{state: text}, override)
 
 	// result只携带state，而不携带string
 	// 具体的string需要配置context拿到lang之后生成

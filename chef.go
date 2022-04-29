@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -28,6 +29,8 @@ type (
 
 		// role 节点角色
 		role string
+
+		mode env
 
 		// version 节点版本
 		version string
@@ -231,6 +234,16 @@ func (k *chef) configure(config Map) {
 	}
 	if version, ok := config["version"].(string); ok && version != k.config.version {
 		k.config.version = version
+	}
+	if mode, ok := config["mode"].(string); ok {
+		mode = strings.ToLower(mode)
+		if mode == "t" || mode == "test" || mode == "testing" {
+			k.config.mode = testing
+		} else if mode == "p" || mode == "prod" || mode == "production" {
+			k.config.mode = production
+		} else {
+			k.config.mode = developing
+		}
 	}
 
 	// 配置写到配置中

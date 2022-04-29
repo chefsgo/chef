@@ -27,13 +27,6 @@ func Setting() Map {
 	return core.setting()
 }
 
-func Role() string {
-	return core.config.role
-}
-func Version() string {
-	return core.config.version
-}
-
 // Ready 准备好各模块
 // 当你需要写一个临时程序，但是又需要使用程序里的代码
 // 比如，导入老数据，整理文件或是数据，临时的采集程序等等
@@ -54,4 +47,26 @@ func Go() {
 	core.launch()
 	core.waiting()
 	core.terminate()
+}
+
+func Name() string {
+	return core.config.name
+}
+func Role() string {
+	return core.config.role
+}
+func Version() string {
+	return core.config.version
+}
+func Mode() env {
+	return core.config.mode
+}
+func Developing() bool {
+	return core.config.mode == developing
+}
+func Testing() bool {
+	return core.config.mode == testing
+}
+func Production() bool {
+	return core.config.mode == production
 }

@@ -16,10 +16,9 @@ import (
 
 var (
 	mBasic = &basicModule{
-		langConfigs: make(map[string]langConfig, 0),
+		languages: make(map[string]Language, 0),
 
 		states:   make(State, 0),
-		langs:    make(Lang, 0),
 		mimes:    make(MIME, 0),
 		regulars: make(Regular, 0),
 		types:    make(map[string]Type, 0),
@@ -27,15 +26,27 @@ var (
 )
 
 type (
+	// basicModule 是基础模块
+	// 主要用功能是 状态、多语言字串、MIME类型、正则表达式等等
+	basicModule struct {
+		mutex     sync.Mutex
+		languages map[string]Language
+
+		//存储所有状态定义
+		states State
+		// mimes MIME集合
+		mimes MIME
+		// regulars 正则表达式集合
+		regulars Regular
+		// types 参数类型集合
+		types map[string]Type
+	}
 
 	// 注意，以下几个类型，不能使用 xxx = map[xxx]yy 的方法定义
 	// 因为无法使用.(type)来断言类型
 
 	// State 状态定义，方便注册
 	State map[string]int
-
-	// Lang 自定义lang类型，方便注册
-	Lang map[string]string
 	// MIME mimetype集合
 	MIME map[string]string
 	Mime = MIME
@@ -43,10 +54,11 @@ type (
 	Regular map[string][]string
 
 	//多语言配置
-	langConfig struct {
-		Name    string   `toml:"name"`
-		Text    string   `toml:"text"`
-		Accepts []string `toml:"accepts"`
+	Language struct {
+		Name    string
+		Text    string
+		Accepts []string
+		Strings Strs
 	}
 
 	// Type 类型定义
@@ -60,158 +72,143 @@ type (
 	}
 	TypeValidFunc func(Any, Var) bool
 	TypeValueFunc func(Any, Var) Any
-
-	// basicModule 是基础模块
-	// 主要用功能是 状态、多语言字串、MIME类型、正则表达式等等
-	basicModule struct {
-		mutex       sync.Mutex
-		langConfigs map[string]langConfig
-
-		//存储所有状态定义
-		states State
-		// langs 多语言字串集合
-		langs Lang
-		// mimes MIME集合
-		mimes MIME
-		// regulars 正则表达式集合
-		regulars Regular
-		// types 参数类型集合
-		types map[string]Type
-	}
 )
 
-func (module *basicModule) Builtin() {
+func (this *basicModule) Builtin() {
 }
-func (module *basicModule) Register(name string, value Any, override bool) {
+func (this *basicModule) Register(name string, value Any, override bool) {
 	switch val := value.(type) {
-	case Lang:
-		module.Lang(name, val, override)
+	case Language:
+		this.Language(name, val, override)
+	case Strs:
+		this.languageString(name, val, override)
 	case State:
-		module.State(val, override)
+		this.State(val, override)
 	case MIME:
-		module.MIME(val, override)
+		this.MIME(val, override)
 	case Regular:
-		module.Regular(val, override)
+		this.Regular(val, override)
 	case Type:
-		module.Type(name, val, override)
+		this.Type(name, val, override)
 	}
 
 }
 
-func (module *basicModule) Configure(value Any) {
-	if cfg, ok := value.(map[string]langConfig); ok {
-		module.langConfigs = cfg
-		return
-	}
+func (this *basicModule) Configure(value Any) {
+	// if cfg, ok := value.(map[string]langConfig); ok {
+	// 	this.langConfigs = cfg
+	// 	return
+	// }
 
-	var global Map
-	if cfg, ok := value.(Map); ok {
-		global = cfg
-	} else {
-		return
-	}
+	// var global Map
+	// if cfg, ok := value.(Map); ok {
+	// 	global = cfg
+	// } else {
+	// 	return
+	// }
 
-	var config Map
-	if vvv, ok := global["lang"].(Map); ok {
-		config = vvv
-	}
+	// var config Map
+	// if vvv, ok := global["lang"].(Map); ok {
+	// 	config = vvv
+	// }
 
-	//记录上一层的配置，如果有的话
-	defConfig := Map{}
+	// //记录上一层的配置，如果有的话
+	// defConfig := Map{}
 
-	for key, val := range config {
-		if conf, ok := val.(Map); ok {
-			//直接注册，然后删除当前key
-			module.langConfigure(key, conf)
-		} else {
-			//记录上一层的配置，如果有的话
-			defConfig[key] = val
-		}
-	}
+	// for key, val := range config {
+	// 	if conf, ok := val.(Map); ok {
+	// 		//直接注册，然后删除当前key
+	// 		this.langConfigure(key, conf)
+	// 	} else {
+	// 		//记录上一层的配置，如果有的话
+	// 		defConfig[key] = val
+	// 	}
+	// }
 
-	if len(defConfig) > 0 {
-		module.langConfigure(DEFAULT, defConfig)
-	}
+	// if len(defConfig) > 0 {
+	// 	this.langConfigure(DEFAULT, defConfig)
+	// }
 
 	// if lang, ok := config["lang"].(Map); ok {
 	// 	for key, val := range lang {
 	// 		if conf, ok := val.(Map); ok {
-	// 			module.langConfigure(key, conf)
+	// 			this.langConfigure(key, conf)
 	// 		}
 	// 	}
 	// }
 }
-func (module *basicModule) langConfigure(name string, config Map) {
-	lang := langConfig{}
 
-	// 如果之前存在过，就直接拿过来
-	if vv, ok := module.langConfigs[name]; ok {
-		lang = vv
-	}
+// func (this *basicModule) langConfigure(name string, config Map) {
+// 	lang := langConfig{}
 
-	if vv, ok := config["name"].(string); ok {
-		lang.Name = vv
-	}
-	if vv, ok := config["text"].(string); ok {
-		lang.Text = vv
-	}
-	if vvs, ok := config["accepts"].([]string); ok {
-		lang.Accepts = vvs
-	}
+// 	// 如果之前存在过，就直接拿过来
+// 	if vv, ok := this.langConfigs[name]; ok {
+// 		lang = vv
+// 	}
 
-	//保存配置
-	module.langConfigs[name] = lang
+// 	if vv, ok := config["name"].(string); ok {
+// 		lang.Name = vv
+// 	}
+// 	if vv, ok := config["text"].(string); ok {
+// 		lang.Text = vv
+// 	}
+// 	if vvs, ok := config["accepts"].([]string); ok {
+// 		lang.Accepts = vvs
+// 	}
+
+// 	//保存配置
+// 	this.langConfigs[name] = lang
+// }
+
+func (this *basicModule) Initialize() {
 }
 
-func (module *basicModule) Initialize() {
+func (this *basicModule) Connect() {
 }
 
-func (module *basicModule) Connect() {
+func (this *basicModule) Launch() {
 }
 
-func (module *basicModule) Launch() {
-}
-
-func (module *basicModule) Terminate() {
+func (this *basicModule) Terminate() {
 }
 
 // State 注册状态
-func (module *basicModule) State(config State, override bool) {
+func (this *basicModule) State(config State, override bool) {
 	for key, val := range config {
 		if override {
-			module.states[key] = val
+			this.states[key] = val
 		} else {
-			if _, ok := module.states[key]; ok == false {
-				module.states[key] = val
+			if _, ok := this.states[key]; ok == false {
+				this.states[key] = val
 			}
 		}
 	}
 }
 
-// func (module *basicModule) State(name string, config State, override bool) {
+// func (this *basicModule) State(name string, config State, override bool) {
 // 	alias := make([]string, 0)
 // 	if name != "" {
 // 		alias = append(alias, name)
 // 	}
 
 // 	if override {
-// 		module.states[name] = config
+// 		this.states[name] = config
 // 	} else {
-// 		if _, ok := module.states[name]; ok == false {
-// 			module.states[name] = config
+// 		if _, ok := this.states[name]; ok == false {
+// 			this.states[name] = config
 // 		}
 // 	}
 
 // 	//自动注册默认的语言字串
 // 	if config.Text != "" {
-// 		module.Lang(DEFAULT, Lang{name: config.Text}, override)
+// 		this.Lang(DEFAULT, Lang{name: config.Text}, override)
 // 	}
 // }
 
 // StateCode 获取状态的代码
 // defs 可指定默认code，不存在时将返回默认code
-func (module *basicModule) StateCode(state string, defs ...int) int {
-	if code, ok := module.states[state]; ok {
+func (this *basicModule) StateCode(state string, defs ...int) int {
+	if code, ok := this.states[state]; ok {
 		return code
 	}
 	if len(defs) > 0 {
@@ -220,45 +217,76 @@ func (module *basicModule) StateCode(state string, defs ...int) int {
 	return -1
 }
 
-// Lang 注册多语言字串
-// 语言lang为做前缀，全部写成同一个集合中
-func (module *basicModule) Lang(lang string, config Lang, override bool) {
-	for k, v := range config {
-		//所有k统一把点替换为下划线，为加载语言资源文件时方便
-		key := fmt.Sprintf("%v.%v", lang, strings.Replace(k, ".", "_", -1))
-		if override {
-			module.langs[key] = v
-		} else {
-			if _, ok := module.langs[k]; ok == false {
-				module.langs[key] = v
+// Language 注册语言
+func (this *basicModule) Language(name string, config Language, override bool) {
+
+	if config.Strings == nil {
+		config.Strings = make(Strs, 0)
+	}
+
+	if override {
+		this.languages[name] = config
+
+	} else {
+		if _, ok := this.languages[name]; ok == false {
+			this.languages[name] = config
+		}
+	}
+
+}
+
+func (this *basicModule) languageString(name string, strs Strs, override bool) {
+
+	if lang, ok := this.languages[name]; ok {
+		for key, str := range strs {
+			key = strings.Replace(key, ".", "_", -1)
+			if override {
+				lang.Strings[key] = str
+			} else {
+				if _, ok := lang.Strings[key]; ok == false {
+					lang.Strings[key] = str
+				}
 			}
 		}
 	}
 }
 
-// String 获取语言字串
-func (module *basicModule) String(lang, name string, args ...Any) string {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
+func (this *basicModule) Languages() map[string]Language {
+	return this.languages
+}
+
+// Strings 获取语言字串列表
+func (this *basicModule) Strings(name string) Strs {
+	strs := Strs{}
+	if lang, ok := this.languages[name]; ok {
+		for key, str := range lang.Strings {
+			strs[key] = str
+		}
+	}
+	return strs
+}
+func (this *basicModule) String(lang, key string, args ...Any) string {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
 
 	if lang == "" {
 		lang = DEFAULT
 	}
 
 	//把所有语言字串的.都替换成_
-	name = strings.Replace(name, ".", "_", -1)
-
-	langKey := fmt.Sprintf("%v.%v", lang, name)
-	defaultKey := fmt.Sprintf("%v.%v", DEFAULT, name)
+	key = strings.Replace(key, ".", "_", -1)
 
 	langStr := ""
-
-	if vv, ok := module.langs[langKey]; ok && vv != "" {
-		langStr = vv
-	} else if vv, ok := module.langs[defaultKey]; ok && vv != "" {
-		langStr = vv
+	if cfg, ok := this.languages[lang]; ok {
+		if str, ok := cfg.Strings[key]; ok {
+			langStr = str
+		}
+	} else if cfg, ok := this.languages[DEFAULT]; ok {
+		if str, ok := cfg.Strings[key]; ok {
+			langStr = str
+		}
 	} else {
-		langStr = name
+		langStr = key
 	}
 
 	if len(args) > 0 {
@@ -271,16 +299,16 @@ func (module *basicModule) String(lang, name string, args ...Any) string {
 }
 
 // Mime 注册mimetype
-func (module *basicModule) MIME(config MIME, override bool) {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
+func (this *basicModule) MIME(config MIME, override bool) {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
 
 	for key, val := range config {
 		if override {
-			module.mimes[key] = val
+			this.mimes[key] = val
 		} else {
-			if _, ok := module.mimes[key]; ok == false {
-				module.mimes[key] = val
+			if _, ok := this.mimes[key]; ok == false {
+				this.mimes[key] = val
 			}
 		}
 	}
@@ -288,8 +316,8 @@ func (module *basicModule) MIME(config MIME, override bool) {
 
 // Extension 按MIME取扩展名
 // defs 为默认值，如果找不到对英的mime，则返回默认
-func (module *basicModule) Extension(mime string, defs ...string) string {
-	for ext, mmm := range module.mimes {
+func (this *basicModule) Extension(mime string, defs ...string) string {
+	for ext, mmm := range this.mimes {
 		if strings.ToLower(mmm) == strings.ToLower(mime) {
 			return ext
 		}
@@ -302,7 +330,7 @@ func (module *basicModule) Extension(mime string, defs ...string) string {
 
 // Mimetype 按扩展名拿 MIMEType
 // defs 为默认值，如果找不到对应的mime，则返回默认
-func (module *basicModule) Mimetype(ext string, defs ...string) string {
+func (this *basicModule) Mimetype(ext string, defs ...string) string {
 	if strings.Contains(ext, "/") {
 		return ext
 	}
@@ -312,11 +340,11 @@ func (module *basicModule) Mimetype(ext string, defs ...string) string {
 		ext = strings.TrimPrefix(ext, ".")
 	}
 
-	if mime, ok := module.mimes[ext]; ok {
+	if mime, ok := this.mimes[ext]; ok {
 		return mime
 	}
 	// 如果定义了*，所有不匹配的扩展名，都返回*
-	if mime, ok := module.mimes["*"]; ok {
+	if mime, ok := this.mimes["*"]; ok {
 		return mime
 	}
 	if len(defs) > 0 {
@@ -327,32 +355,32 @@ func (module *basicModule) Mimetype(ext string, defs ...string) string {
 }
 
 // Regular 注册正则表达式
-func (module *basicModule) Regular(config Regular, override bool) {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
+func (this *basicModule) Regular(config Regular, override bool) {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
 
 	for key, val := range config {
 		if override {
-			module.regulars[key] = val
+			this.regulars[key] = val
 		} else {
-			if _, ok := module.regulars[key]; ok == false {
-				module.regulars[key] = val
+			if _, ok := this.regulars[key]; ok == false {
+				this.regulars[key] = val
 			}
 		}
 	}
 }
 
 // Expressions 获取正则的表达式
-func (module *basicModule) Expressions(name string, defs ...string) []string {
-	if exps, ok := module.regulars[name]; ok {
+func (this *basicModule) Expressions(name string, defs ...string) []string {
+	if exps, ok := this.regulars[name]; ok {
 		return exps
 	}
 	return defs
 }
 
 // Match 正则匹配
-func (module *basicModule) Match(regular, value string) bool {
-	matchs := module.Expressions(regular)
+func (this *basicModule) Match(regular, value string) bool {
+	matchs := this.Expressions(regular)
 	for _, v := range matchs {
 		regx := regexp.MustCompile(v)
 		if regx.MatchString(value) {
@@ -363,9 +391,9 @@ func (module *basicModule) Match(regular, value string) bool {
 }
 
 // Type 注册类型
-func (module *basicModule) Type(name string, config Type, override bool) {
-	module.mutex.Lock()
-	defer module.mutex.Unlock()
+func (this *basicModule) Type(name string, config Type, override bool) {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
 
 	alias := make([]string, 0)
 	if name != "" {
@@ -377,10 +405,10 @@ func (module *basicModule) Type(name string, config Type, override bool) {
 
 	for _, key := range alias {
 		if override {
-			module.types[key] = config
+			this.types[key] = config
 		} else {
-			if _, ok := module.types[key]; ok == false {
-				module.types[key] = config
+			if _, ok := this.types[key]; ok == false {
+				this.types[key] = config
 			}
 		}
 	}
@@ -388,9 +416,9 @@ func (module *basicModule) Type(name string, config Type, override bool) {
 }
 
 // Types 获取所有类型
-func (module *basicModule) Types() map[string]Type {
+func (this *basicModule) Types() map[string]Type {
 	types := map[string]Type{}
-	for k, v := range module.types {
+	for k, v := range this.types {
 		types[k] = v
 	}
 	return types
@@ -398,41 +426,41 @@ func (module *basicModule) Types() map[string]Type {
 
 // typeDefaultValid 默认的类型校验方法
 // 直接转到正则去匹配
-func (module *basicModule) typeDefaultValid(value Any, config Var) bool {
-	return module.Match(config.Type, fmt.Sprintf("%s", value))
+func (this *basicModule) typeDefaultValid(value Any, config Var) bool {
+	return this.Match(config.Type, fmt.Sprintf("%s", value))
 }
 
 // typeDefaultValue 默认值包装方法
-func (module *basicModule) typeDefaultValue(value Any, config Var) Any {
+func (this *basicModule) typeDefaultValue(value Any, config Var) Any {
 	return fmt.Sprintf("%s", value)
 }
 
 // typeValid 获取类型的校验方法
-func (module *basicModule) typeValid(name string) TypeValidFunc {
-	if config, ok := module.types[name]; ok {
+func (this *basicModule) typeValid(name string) TypeValidFunc {
+	if config, ok := this.types[name]; ok {
 		if config.Valid != nil {
 			return config.Valid
 		}
 	}
-	return module.typeDefaultValid
+	return this.typeDefaultValid
 }
 
 // typeValue 获取类型的值包装方法
-func (module *basicModule) typeValue(name string) TypeValueFunc {
-	if config, ok := module.types[name]; ok {
+func (this *basicModule) typeValue(name string) TypeValueFunc {
+	if config, ok := this.types[name]; ok {
 		if config.Value != nil {
 			return config.Value
 		}
 	}
-	return module.typeDefaultValue
+	return this.typeDefaultValue
 }
 
 // typeValue 获取类型的校验和值包装方法
-func (module *basicModule) typeMethod(name string) (TypeValidFunc, TypeValueFunc) {
-	return module.typeValid(name), module.typeValue(name)
+func (this *basicModule) typeMethod(name string) (TypeValidFunc, TypeValueFunc) {
+	return this.typeValid(name), this.typeValue(name)
 }
 
-func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pass bool, zones ...*time.Location) Res {
+func (this *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pass bool, zones ...*time.Location) Res {
 	timezone := time.Local
 	if len(zones) > 0 {
 		timezone = zones[0]
@@ -514,7 +542,7 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 				} else {
 					//这样方便在多语言环境使用
 					key := "_mapping_empty_" + fieldName
-					if module.StateCode(key, -999) == -999 {
+					if this.StateCode(key, -999) == -999 {
 						return textResult("_mapping_empty", fieldConfig.Name)
 					}
 					return textResult(key)
@@ -624,7 +652,7 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 
 					//默认值是不是也要包装一下，这里只包装值，不做验证
 					if fieldConfig.Type != "" {
-						_, fieldValueCall := module.typeMethod(fieldConfig.Type)
+						_, fieldValueCall := this.typeMethod(fieldConfig.Type)
 
 						//如果配置中有自己的值函数
 						if fieldConfig.Value != nil {
@@ -693,7 +721,7 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 				//验证方法和值方法
 				//但是因为默认值的情况下，值有可能是为空的，所以要判断多一点
 				if fieldConfig.Type != "" {
-					fieldValidCall, fieldValueCall := module.typeMethod(fieldConfig.Type)
+					fieldValidCall, fieldValueCall := this.typeMethod(fieldConfig.Type)
 
 					//如果配置中有自己的验证函数
 					if fieldConfig.Valid != nil {
@@ -738,7 +766,7 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 									//这样方便在多语言环境使用
 									//待优化， 通一成一个state
 									key := "_mapping_error_" + fieldName
-									if module.StateCode(key, -999) == -999 {
+									if this.StateCode(key, -999) == -999 {
 										return textResult("_mapping_error", fieldConfig.Name)
 									}
 									return textResult(key)
@@ -797,8 +825,8 @@ func (module *basicModule) Mapping(config Vars, data Map, value Map, argn bool, 
 			for _, d := range fieldData {
 				v := Map{}
 
-				// err := module.Parse(trees, jsonConfig, d, v, argn, pass);
-				res := module.Mapping(jsonConfig, d, v, argn, pass, timezone)
+				// err := this.Parse(trees, jsonConfig, d, v, argn, pass);
+				res := this.Mapping(jsonConfig, d, v, argn, pass, timezone)
 				if res != nil && res.Fail() {
 					return res
 				} else {
@@ -864,6 +892,14 @@ func Mimetype(ext string, defs ...string) string {
 // Extension 按MIMEType获取扩展名
 func Extension(mime string, defs ...string) string {
 	return mBasic.Extension(mime, defs...)
+}
+
+func Languages() map[string]Language {
+	return mBasic.Languages()
+}
+
+func Strings(lang string) Strs {
+	return mBasic.Strings(lang)
 }
 
 // String 获取多语言字串

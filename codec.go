@@ -32,6 +32,7 @@ const (
 	JSON   = "json"
 	XML    = "xml"
 	GOB    = "gob"
+	TOML   = "toml"
 	DIGIT  = "digit"
 	DIGITS = "digits"
 	TEXT   = "text"
@@ -318,6 +319,16 @@ func (module *codecModule) UnmarshalGOB(d []byte, v Any) error {
 	return mCodec.Unmarshal(GOB, d, v)
 }
 
+// MarshalTOML
+func (module *codecModule) MarshalTOML(v Any) ([]byte, error) {
+	return mCodec.Marshal(TOML, v)
+}
+
+// UnmarshalTOML
+func (module *codecModule) UnmarshalTOML(d []byte, v Any) error {
+	return mCodec.Unmarshal(TOML, d, v)
+}
+
 // EncryptDIGIT
 func (module *codecModule) EncryptDIGIT(n int64) (string, error) {
 	return mCodec.Encrypt(DIGIT, n)
@@ -473,6 +484,16 @@ func MarshalGOB(v Any) ([]byte, error) {
 // UnmarshalGOB
 func UnmarshalGOB(d []byte, v Any) error {
 	return mCodec.UnmarshalGOB(d, v)
+}
+
+// MarshalTOML
+func MarshalTOML(v Any) ([]byte, error) {
+	return mCodec.MarshalTOML(v)
+}
+
+// UnmarshalTOML
+func UnmarshalTOML(d []byte, v Any) error {
+	return mCodec.UnmarshalTOML(d, v)
 }
 
 // EncryptDIGIT

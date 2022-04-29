@@ -1,6 +1,8 @@
 package chef
 
 import (
+	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -17,8 +19,9 @@ type (
 		token    string
 		trace    string
 
-		mutex  sync.RWMutex
-		result Res
+		mutex     sync.RWMutex
+		result    Res
+		tempfiles []string
 	}
 	Metadata struct {
 		Name     string `json:"n,omitempty"`
@@ -30,6 +33,13 @@ type (
 		Trace    string `json:"i,omitempty"`
 	}
 )
+
+//最终的清理工作
+func (meta *Meta) close() {
+	for _, file := range meta.tempfiles {
+		os.Remove(file)
+	}
+}
 
 func (meta *Meta) Metadata(datas ...Metadata) Metadata {
 	if len(datas) > 0 {
@@ -216,29 +226,35 @@ func (meta *Meta) Logic(name string, settings ...Map) *Logic {
 
 //待处理
 
-// //生成临时文件
-// func (meta *Meta) TempFile(patterns ...string) (*os.File, error) {
-// 	file, err := TempFile(patterns...)
+//生成临时文件
+func (meta *Meta) TempFile(patterns ...string) (*os.File, error) {
+	meta.mutex.Lock()
+	defer meta.mutex.Unlock()
 
-// 	//记录临时文件
-// 	meta.mutex.Lock()
-// 	meta.tempfiles = append(meta.tempfiles, file.Name())
-// 	meta.mutex.Unlock()
+	if meta.tempfiles == nil {
+		meta.tempfiles = make([]string, 0)
+	}
 
-// 	return file, err
-// }
-// func (meta *Meta) TempDir(patterns ...string) (string, error) {
-// 	name, err := TempDir(patterns...)
+	file, err := tempFile(patterns...)
+	meta.tempfiles = append(meta.tempfiles, file.Name())
 
-// 	if err == nil {
-// 		//记录临时文件
-// 		meta.mutex.Lock()
-// 		meta.tempfiles = append(meta.tempfiles, name)
-// 		meta.mutex.Unlock()
-// 	}
+	return file, err
+}
+func (meta *Meta) TempDir(patterns ...string) (string, error) {
+	meta.mutex.Lock()
+	defer meta.mutex.Unlock()
 
-// 	return name, err
-// }
+	if meta.tempfiles == nil {
+		meta.tempfiles = make([]string, 0)
+	}
+
+	name, err := tempDir(patterns...)
+	if err == nil {
+		meta.tempfiles = append(meta.tempfiles, name)
+	}
+
+	return name, err
+}
 
 //token相关
 
@@ -288,3 +304,37 @@ func (meta *Meta) Logic(name string, settings ...Map) *Logic {
 // func (process *Meta) Base(bases ...string) DataBase {
 // 	return process.dataBase(bases...)
 // }
+
+// CloseMeta 所有携带Meta的Context，必须在执行完成后
+// 调用 CloseMeta 来给meta做收尾的工作，主要是删除临时文件，关闭连接之类的
+func CloseMeta(meta *Meta) {
+	meta.close()
+}
+
+func tempFile(patterns ...string) (*os.File, error) {
+	pattern := ""
+	if len(patterns) > 0 {
+		pattern = patterns[0]
+	}
+
+	dir := os.TempDir()
+	// if core.config.TempDir != "" {
+	// 	dir = core.config.TempDir
+	// }
+
+	return ioutil.TempFile(dir, pattern)
+}
+
+func tempDir(patterns ...string) (string, error) {
+	pattern := ""
+	if len(patterns) > 0 {
+		pattern = patterns[0]
+	}
+
+	dir := os.TempDir()
+	// if mFile.config.TempDir != "" {
+	// 	dir = mFile.config.TempDir
+	// }
+
+	return ioutil.TempDir(dir, pattern)
+}
