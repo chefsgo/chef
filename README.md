@@ -55,4 +55,29 @@ Chefs.go chef
 
     chef 各模块的委托方法
 
+    http.bodyParser 要处理，老方法太垃圾了
+    或者允许，被替换成自己想要的中间件
+
+
+    http.Ctx.IPs()
+    // X-Forwarded-For: proxy1, 127.0.0.1, proxy3
+    c.IPs() // ["proxy1", "127.0.0.1", "proxy3"]
+
+    ctx 方法，更多 动态参数处理，如 ctx.File 一样
+    http ctx.Protocol() 方法
+    http ctx Host Path 这些，函数化， 避免被外部修改。
+    ctx.Uri(),  ctx.Host(),  ctx.Domain(),  ctx.Path() 等
+    ctx.BodyParser, ctx.QueryParser 等解析方法，
+    ctx.Routing，直接转向到另一个路由上去，响应
+    ctx.File 考虑 compress 参数
+    http 内置 gzip 啥的
+
+    现成的middlewares，比如， limiter 啥的， 进一步简化开发工作
+    比如，请求http,event,queue的请求log 中件间什么的
+    gofiber 可参考
+    cross 可以做成 中件间的方式提供
+    cookies 加密，也可以走中间件？
+    就是尽量，把所有功能都以中间件的方式提供，也更方便去替换
+
+
 -->

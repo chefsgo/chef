@@ -460,6 +460,10 @@ func (this *basicModule) typeMethod(name string) (TypeValidFunc, TypeValueFunc) 
 	return this.typeValid(name), this.typeValue(name)
 }
 
+// Mapping 处理动态参数方法
+// 这方法大概是在2016-2017年写的
+// 最近没有时间重构优化，将就着用用吧，
+// 等框架核心的东西和文档写完，再来优化这部分东西
 func (this *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pass bool, zones ...*time.Location) Res {
 	timezone := time.Local
 	if len(zones) > 0 {
