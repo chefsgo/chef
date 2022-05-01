@@ -61,12 +61,16 @@ type (
 	}
 
 	Codec struct {
-		Name    string
-		Text    string
-		Alias   []string
-		Setting Map
-		Encode  EncodeFunc
-		Decode  DecodeFunc
+		// Name 名称
+		Name string
+		// Text 说明
+		Text string
+		// Alias 别名
+		Alias []string
+		// Encode 编码方法
+		Encode EncodeFunc
+		// Decode 解码方法
+		Decode DecodeFunc
 	}
 	EncodeFunc func(v Any) (Any, error)
 	DecodeFunc func(d Any, v Any) (Any, error)

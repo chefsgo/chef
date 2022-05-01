@@ -7,6 +7,8 @@ Chefs.go chef
 
 <!--
 
+    各模块的Register 支持 Config 的定义
+
     各模块的configure没有处理setting
     各模块的 headth 还是要的， 像 data，就没法在框架内完成统计，因为不知道db是什么Close的
 
@@ -78,6 +80,9 @@ Chefs.go chef
     cross 可以做成 中件间的方式提供
     cookies 加密，也可以走中间件？
     就是尽量，把所有功能都以中间件的方式提供，也更方便去替换
+
+
+    http,router定义的时候，在初始化的时候，处理，如果站点不存在，又不是以 . 开始，就自动算到空站点下
 
 
 -->
