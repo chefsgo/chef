@@ -338,7 +338,7 @@ func (this *basicModule) Mime(name string, config Mime, override bool) {
 }
 func (this *basicModule) Mimes(config Mimes, override bool) {
 	for key, val := range config {
-		this.Regular(key, val, override)
+		this.Mime(key, val, override)
 	}
 }
 
