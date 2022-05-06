@@ -7,6 +7,8 @@ Chefs.go chef
 
 <!--
 
+    各模块的驱动 Connect 方法，直接换成 Instance
+
     各模块的Register 支持 Config 的定义
 
     各模块的configure没有处理setting
