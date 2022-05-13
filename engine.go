@@ -93,8 +93,7 @@ func (module *engineModule) Register(key string, value Any, override bool) {
 }
 
 // Configure
-func (module *engineModule) Configure(value Any) {
-
+func (module *engineModule) Configure(value Map) {
 }
 
 // Initialize

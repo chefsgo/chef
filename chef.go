@@ -20,8 +20,7 @@ type (
 
 		mutex   sync.RWMutex
 		config  config
-		names   []string
-		modules map[string]Module
+		modules []Module
 	}
 	config struct {
 		// name 项目名称
@@ -63,20 +62,10 @@ func (this *chef) setting() Map {
 
 // loader 把模块注册到core
 // 遍历所有已经注册过的模块，避免重复注册
-func (this *chef) loader(name string, mod Any) {
+func (this *chef) loader(mod Module) {
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
-
-	if module, ok := mod.(Module); ok == false {
-		panic(name + " not a module")
-		return
-	} else {
-		_, exists := this.modules[name]
-		if exists == false {
-			this.names = append(this.names, name)
-		}
-		this.modules[name] = module
-	}
+	this.modules = append(this.modules, mod)
 }
 
 // register 遍历所有模块调用注册
@@ -108,7 +97,7 @@ func (k *chef) register(regs ...Any) {
 			k.configure(mmm)
 		} else if mod, ok := cfg.(Module); ok {
 			// 兼容所有模块的配置注册
-			k.loader(name, mod)
+			k.loader(mod)
 		} else {
 			//实际注册到各模块
 			for _, mod := range k.modules {
@@ -254,8 +243,7 @@ func (k *chef) configure(config Map) {
 	}
 
 	// 把配置下发到各个模块
-	for _, name := range k.names {
-		mod := k.modules[name]
+	for _, mod := range k.modules {
 		mod.Configure(config)
 	}
 }
@@ -271,8 +259,7 @@ func (k *chef) initialize() {
 	if k.initialized {
 		return
 	}
-	for _, name := range k.names {
-		mod := k.modules[name]
+	for _, mod := range k.modules {
 		mod.Initialize()
 	}
 	k.initialized = true
@@ -283,8 +270,7 @@ func (k *chef) connect() {
 	if k.connected {
 		return
 	}
-	for _, name := range k.names {
-		mod := k.modules[name]
+	for _, mod := range k.modules {
 		mod.Connect()
 	}
 	k.connected = true
@@ -296,8 +282,7 @@ func (k *chef) launch() {
 	if k.launched {
 		return
 	}
-	for _, name := range k.names {
-		mod := k.modules[name]
+	for _, mod := range k.modules {
 		mod.Launch()
 	}
 
@@ -324,9 +309,8 @@ func (k *chef) terminate() {
 	//停止前触发器，同步
 	Execute(StopTrigger)
 
-	for i := len(k.names) - 1; i >= 0; i-- {
-		name := k.names[i]
-		mod := k.modules[name]
+	for i := len(k.modules) - 1; i >= 0; i-- {
+		mod := k.modules[i]
 		mod.Terminate()
 	}
 	k.launched = false

@@ -151,7 +151,7 @@ func (this *basicModule) langConfigure(name string, config Map) {
 	this.languages[name] = lang
 }
 
-func (this *basicModule) Configure(value Any) {
+func (this *basicModule) Configure(value Map) {
 	// if cfg, ok := value.(map[string]langConfig); ok {
 	// 	this.langConfigs = cfg
 	// 	return

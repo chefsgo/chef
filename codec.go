@@ -106,19 +106,7 @@ func (module *codecModule) Register(name string, value Any, override bool) {
 }
 
 // Configure
-func (module *codecModule) Configure(value Any) {
-	if cfg, ok := value.(codecConfig); ok {
-		module.config = cfg
-		return
-	}
-
-	var global Map
-	if cfg, ok := value.(Map); ok {
-		global = cfg
-	} else {
-		return
-	}
-
+func (module *codecModule) Configure(global Map) {
 	var config Map
 	if vv, ok := global["codec"].(Map); ok {
 		config = vv

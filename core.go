@@ -15,8 +15,7 @@ var (
 			setting: Map{},
 		},
 
-		names:   make([]string, 0),
-		modules: make(map[string]Module, 0),
+		modules: make([]Module, 0),
 	}
 )
 

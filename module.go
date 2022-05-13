@@ -7,7 +7,7 @@ import (
 type (
 	Module interface {
 		Register(name string, value Any, override bool)
-		Configure(Any)
+		Configure(Map)
 		Initialize()
 		Connect()
 		Launch()
@@ -16,7 +16,7 @@ type (
 )
 
 func init() {
-	Register("basic", mBasic)
-	Register("codec", mCodec)
-	Register("engine", mEngine)
+	Register(mBasic)
+	Register(mCodec)
+	Register(mEngine)
 }
