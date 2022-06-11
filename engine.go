@@ -32,6 +32,22 @@ const (
 
 type (
 	Method struct {
+		service  bool     `json:"service"`
+		Name     string   `json:"name"`
+		Text     string   `json:"desc"`
+		Alias    []string `json:"-"`
+		Nullable bool     `json:"null"`
+		Args     Vars     `json:"args"`
+		Data     Vars     `json:"data"`
+		Setting  Map      `json:"-"`
+		Coding   bool     `json:"-"`
+		Action   Any      `json:"-"`
+
+		Token bool `json:"token"`
+		Auth  bool `json:"auth"`
+	}
+
+	Service struct {
 		Name     string   `json:"name"`
 		Text     string   `json:"desc"`
 		Alias    []string `json:"-"`
@@ -127,6 +143,14 @@ func (module *engineModule) Method(name string, config Method, override bool) {
 			}
 		}
 	}
+}
+
+func (module *engineModule) Service(name string, config Service, override bool) {
+	// method := Method{
+	// 	config.Name, config.Text, config.Alias, config.Nullable,
+	// 	config.Args, config.Data, config.Setting, config.Coding, config.Action,
+	// 	config.Token, config.Auth,
+	// }
 }
 
 //给本地 invoke 的，加上远程调用
