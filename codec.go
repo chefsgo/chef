@@ -199,6 +199,15 @@ func (this *codecModule) Codec(name string, config Codec, override bool) {
 
 }
 
+func (this *codecModule) Codecs() map[string]Codec {
+	codecs := map[string]Codec{}
+	for k, v := range this.codecs {
+		codecs[k] = v
+	}
+
+	return codecs
+}
+
 // Sequence 雪花ID
 func (module *codecModule) Sequence() int64 {
 	return mCodec.fastid.NextID()
@@ -536,4 +545,10 @@ func Sequence() int64 {
 // Unique 雪花ID 转数字加密
 func Generate(prefixs ...string) string {
 	return mCodec.Generate(prefixs...)
+}
+
+//-----------------
+
+func Codecs() map[string]Codec {
+	return mCodec.Codecs()
 }
