@@ -1,7 +1,6 @@
 package chef
 
 import (
-	"strings"
 	"sync"
 
 	. "github.com/chefsgo/base"
@@ -55,12 +54,6 @@ type (
 
 		Value Map
 		Args  Map
-	}
-
-	engineLibrary struct {
-		engine   *engineModule
-		name     string
-		cardinal int
 	}
 
 	Logic struct {
@@ -418,13 +411,6 @@ func (module *engineModule) Invokee(meta *Meta, name string, value Map, settings
 	return 0, res
 }
 
-func (module *engineModule) Library(name string, cardinals ...int) *engineLibrary {
-	cardinal := 1000
-	if len(cardinals) > 0 {
-		cardinal = cardinals[0]
-	}
-	return &engineLibrary{module, name, cardinal}
-}
 func (module *engineModule) Logic(meta *Meta, name string, settings ...Map) *Logic {
 	setting := make(Map)
 	if len(settings) > 0 {
@@ -455,37 +441,6 @@ func (module *engineModule) Arguments(name string, extends ...Vars) Vars {
 	}
 
 	return VarsExtend(args, extends...)
-}
-
-//------------ library ----------------
-
-func (lib *engineLibrary) Name() string {
-	return lib.name
-}
-func (lib *engineLibrary) Register(name string, value Any, overrides ...bool) {
-	override := true
-	if len(overrides) > 0 {
-		override = overrides[0]
-	}
-
-	if !strings.HasPrefix(name, lib.name+".") && lib.name != "" {
-		name = lib.name + "." + name
-	}
-
-	mEngine.Register(name, value, override)
-}
-
-func (lib *engineLibrary) Result(ok bool, state string, text string, overrides ...bool) Res {
-	code := 0
-	if ok == false {
-		code = lib.cardinal
-		lib.cardinal++
-	}
-
-	if !strings.HasPrefix(state, lib.name+".") && lib.name != "" {
-		state = lib.name + "." + state
-	}
-	return Result(code, state, text, overrides...)
 }
 
 //------- logic 方法 -------------
@@ -634,10 +589,6 @@ func invokerDataConfig() Vars {
 }
 
 //-------------------------------------------------------------------------------------------------------
-
-func Library(name string, cardinals ...int) *engineLibrary {
-	return mEngine.Library(name, cardinals...)
-}
 
 //方法参数
 func Arguments(name string, extends ...Vars) Vars {
