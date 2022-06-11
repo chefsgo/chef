@@ -1,7 +1,9 @@
 package chef
 
 import (
+	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -290,6 +292,12 @@ func (k *chef) launch() {
 	Trigger(StartTrigger)
 
 	k.launched = true
+
+	if k.config.name == k.config.role || k.config.role == "" {
+		log.Println(fmt.Sprintf("%s %s-%s is running", CHEFSGO, k.config.name, k.config.version))
+	} else {
+		log.Println(fmt.Sprintf("%s %s-%s-%s is running", CHEFSGO, k.config.name, k.config.role, k.config.version))
+	}
 }
 
 // waiting 等待系统退出信号
@@ -314,4 +322,10 @@ func (k *chef) terminate() {
 		mod.Terminate()
 	}
 	k.launched = false
+
+	if k.config.name == k.config.role || k.config.role == "" {
+		log.Println(fmt.Sprintf("%s %s-%s stopted", CHEFSGO, k.config.name, k.config.version))
+	} else {
+		log.Println(fmt.Sprintf("%s %s-%s-%s stopted", CHEFSGO, k.config.name, k.config.role, k.config.version))
+	}
 }

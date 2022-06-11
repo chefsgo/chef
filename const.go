@@ -14,6 +14,8 @@ const (
 
 const (
 	CHEF    = "chef"
+	CHEFSGO = "Chefs.go"
+
 	DEFAULT = "default"
 
 	UTF8   = "utf-8"

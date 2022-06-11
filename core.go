@@ -11,7 +11,7 @@ var (
 		connected:   false,
 		launched:    false,
 		config: config{
-			name: CHEF, role: CHEF, version: "0.0.0",
+			name: CHEF, role: CHEF, version: "v0.0.0",
 			setting: Map{},
 		},
 
@@ -20,6 +20,5 @@ var (
 )
 
 func init() {
-	//如果外部加载了，这里先builtin就没法执行了
-	// core.builtin()
+
 }
