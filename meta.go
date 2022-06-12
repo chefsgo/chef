@@ -11,8 +11,9 @@ import (
 
 type (
 	Meta struct {
-		name     string
-		payload  Map
+		name    string
+		payload Map
+
 		retries  int
 		language string
 		timezone int
@@ -22,6 +23,8 @@ type (
 		mutex     sync.RWMutex
 		result    Res
 		tempfiles []string
+
+		verify *Token
 	}
 	Metadata struct {
 		Name     string `json:"n,omitempty"`
@@ -51,6 +54,10 @@ func (meta *Meta) Metadata(datas ...Metadata) Metadata {
 		meta.timezone = data.Timezone
 		meta.token = data.Token
 		meta.trace = data.Trace
+
+		if data.Token != "" {
+			meta.Verify(data.Token)
+		}
 	}
 
 	return Metadata{
@@ -62,6 +69,9 @@ func (meta *Meta) Metadata(datas ...Metadata) Metadata {
 func (meta *Meta) Language(langs ...string) string {
 	if len(langs) > 0 {
 		meta.language = langs[0]
+	}
+	if meta.language == "" {
+		return DEFAULT
 	}
 	return meta.language
 }
@@ -98,27 +108,6 @@ func (meta *Meta) Token(tokens ...string) string {
 	}
 	return meta.token
 }
-
-//最终的清理工作
-// 待处理
-// func (meta *Meta) End() {
-// 	// for _, file := range meta.tempfiles {
-// 	// 	os.Remove(file)
-// 	// }
-// 	// for _, base := range meta.databases {
-// 	// 	base.Close()
-// 	// }
-// }
-
-//待处理
-// func (meta *Meta) dataBase(bases ...string) DataBase {
-// 	inst := mData.Instance(bases...)
-
-// 	if _, ok := meta.databases[inst.name]; ok == false {
-// 		meta.databases[inst.name] = inst.connect.Base()
-// 	}
-// 	return meta.databases[inst.name]
-// }
 
 //返回最后的错误信息
 //获取操作结果
@@ -258,46 +247,75 @@ func (meta *Meta) TempDir(patterns ...string) (string, error) {
 
 //token相关
 
-// 待处理
-// //actId
-// func (meta *Meta) ActId() string {
-// 	if meta.verify != nil {
-// 		return meta.verify.ActId
-// 	}
-// 	return ""
-// }
+// Id 是token的ID，类似与 sessionId
+func (meta *Meta) Id() string {
+	if meta.verify != nil {
+		return meta.verify.Header.Id
+	}
+	return ""
+}
 
-// //是否有合法的token
-// func (meta *Meta) Tokenized() bool {
-// 	if meta.verify != nil {
-// 		return true
-// 	}
-// 	return false
-// }
+// Tokenized 是否有合法的token
+func (meta *Meta) Signed() bool {
+	return meta.verify != nil
+}
 
-// //是否通过验证
-// func (meta *Meta) Authorized() bool {
-// 	if meta.verify != nil {
-// 		return meta.verify.Authorized
-// 	}
-// 	return false
-// }
+//是否通过验证
+func (meta *Meta) Authed() bool {
+	if meta.verify != nil {
+		return meta.verify.Header.Auth
+	}
+	return false
+}
 
-// //登录的身份信息
-// func (meta *Meta) Identity() string {
-// 	if meta.verify != nil {
-// 		return meta.verify.Identity
-// 	}
-// 	return ""
-// }
+// Payload Token携带的负载
+func (meta *Meta) Payload() Map {
+	if meta.verify != nil {
+		return meta.verify.Payload
+	}
+	return nil
+}
 
-// //登录的身份信息
-// func (meta *Meta) Payload() Map {
-// 	if meta.verify != nil {
-// 		return meta.verify.Payload
-// 	}
-// 	return nil
-// }
+// Sign 生成签名
+// 此方法不会更新当前上下文中的token和verify
+// 可以用在一些批量生成的场景
+func (meta *Meta) Sign(auth bool, payload Map, ends ...time.Duration) string {
+	verify := &Token{Payload: payload}
+	if tid := meta.Id(); tid != "" {
+		verify.Header.Id = tid
+	} else {
+		verify.Header.Id = mCodec.Generate()
+	}
+
+	verify.Header.Auth = auth
+
+	now := time.Now()
+	if len(ends) > 0 {
+		verify.Header.End = now.Add(ends[0]).Unix()
+	}
+
+	token, err := mToken.Sign(verify)
+	if err != nil {
+		meta.Result(errorResult(err))
+		return ""
+	}
+
+	//这里生成，就替换上下文里的了
+	meta.token = token
+	meta.verify = verify
+
+	return token
+}
+
+// Verify 验证签名
+func (meta *Meta) Verify(token string) error {
+	verify, err := mToken.Verify(token)
+	if verify != nil {
+		meta.token = token
+		meta.verify = verify
+	}
+	return err
+}
 
 //------------------- Process 方法 --------------------
 

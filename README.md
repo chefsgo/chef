@@ -7,6 +7,9 @@ Chefs.go chef
 
 <!--
 
+    http 基于token的session支持
+
+
     各模块的驱动 Connect 方法，直接换成 Instance
 
     各模块的Register 支持 Config 的定义
