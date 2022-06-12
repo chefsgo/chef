@@ -52,7 +52,7 @@ type (
 	States map[string]State
 	// MIME mimetype集合
 	Mime  []string
-	Mimes map[string][]string
+	Mimes map[string]Mime
 	// Regular 正则表达式，方便注册
 	Regular  []string
 	Regulars map[string]Regular
@@ -577,12 +577,15 @@ func (this *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pa
 				if fieldConfig.Empty != nil {
 					return fieldConfig.Empty
 				} else {
-					//这样方便在多语言环境使用
-					key := "_mapping_empty_" + fieldName
-					if this.StateCode(key, -999) == -999 {
-						return textResult("_mapping_empty", fieldConfig.Name)
-					}
-					return textResult(key)
+
+					return varEmpty.With(fieldName)
+
+					// //这样方便在多语言环境使用
+					// key := "_mapping_empty_" + fieldName
+					// if this.StateCode(key, -999) == -999 {
+					// 	return textResult("_mapping_empty", fieldConfig.Name)
+					// }
+					// return textResult(key)
 				}
 			}
 
@@ -800,13 +803,15 @@ func (this *basicModule) Mapping(config Vars, data Map, value Map, argn bool, pa
 								if fieldConfig.Error != nil {
 									return fieldConfig.Error
 								} else {
-									//这样方便在多语言环境使用
-									//待优化， 通一成一个state
-									key := "_mapping_error_" + fieldName
-									if this.StateCode(key, -999) == -999 {
-										return textResult("_mapping_error", fieldConfig.Name)
-									}
-									return textResult(key)
+
+									return varError.With(fieldName)
+
+									// //这样方便在多语言环境使用
+									// key := "_mapping_error_" + fieldName
+									// if this.StateCode(key, -999) == -999 {
+									// 	return textResult("_mapping_error", fieldConfig.Name)
+									// }
+									// return textResult(key)
 								}
 							}
 						}

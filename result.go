@@ -14,7 +14,9 @@ var (
 	Invalid  = Result(3, "invalid", "无效请求或数据")
 	Nothing  = Result(4, "nothing", "无效对象")
 	Unsigned = Result(5, "unsigned", "无权访问")
-	Unauthed = Result(5, "unauthed", "无权访问")
+	Unauthed = Result(6, "unauthed", "无权访问")
+	varEmpty = Result(7, "varempty", "%s不可为空")
+	varError = Result(8, "varerrpr", "%s无效")
 )
 
 type (
