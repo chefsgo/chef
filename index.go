@@ -39,7 +39,17 @@ func Ready() {
 }
 
 // Go 直接开跑
-func Go() {
+func Go(args ...string) {
+	if l := len(args); l > 0 {
+		if l == 1 {
+			//role
+			core.identify(args[0])
+		} else {
+			//role, version
+			core.identify(args[0], args[1])
+		}
+	}
+
 	core.parse()
 	core.cluster()
 	core.initialize()
