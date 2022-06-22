@@ -24,7 +24,7 @@ func (lib *library) Register(name string, value Any, overrides ...bool) {
 	// 	override = overrides[0]
 	// }
 
-	if !strings.HasPrefix(name, lib.name+".") && lib.name != "" {
+	if lib.name != "" && !strings.HasPrefix(name, lib.name+".") && lib.name != "" {
 		name = lib.name + "." + name
 	}
 
